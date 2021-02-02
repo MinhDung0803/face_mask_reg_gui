@@ -8,7 +8,9 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
+import time
 
+global th
 
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
@@ -16,11 +18,12 @@ class Thread(QtCore.QThread):
     def __init__(self, parent):
         # changePixmap = QtCore.pyqtSignal(QtGui.QImage)
         QtCore.QThread.__init__(self, parent)
+        self._go = None
 
     def run(self):
         cap = cv2.VideoCapture('rtsp://admin:Admin123@192.168.111.211/1')
-
-        while True:
+        self._go = True
+        while self._go:
             ret, frame = cap.read()
             frame = cv2.resize(frame, (640, 480))
             if ret:
@@ -32,13 +35,24 @@ class Thread(QtCore.QThread):
                 p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
                 self.changePixmap.emit(p)
 
+    def stop_thread(self):
+        self._go = False
+
 
 def close_window():
+    # global th
+    th.stop_thread()
+    time.sleep(1)
     exit()
 
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
+
+        # define video thread
+        global th
+        th = Thread(MainWindow)
+
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1080, 720)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -87,7 +101,7 @@ class Ui_MainWindow(object):
 
     def video(self):
         self.label.resize(640, 480)
-        th = Thread(MainWindow)
+        # th = Thread(MainWindow)
         th.changePixmap.connect(self.setImage)
         th.start()
 
