@@ -17,7 +17,8 @@ global th, \
     light_alarm, \
     sound_alarm, \
     both_alarm, \
-    count, height, \
+    count, \
+    height, \
     width, \
     draw_region_points, \
     default_region_points, \
@@ -44,6 +45,7 @@ draw_region_flag = False
 draw_counting_points = []
 default_counting_points = [[(0, int(height/2)), (width, int(height/2))]]
 draw_count_flag = False
+
 
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
@@ -301,7 +303,7 @@ class Ui_MainWindow(object):
         self.draw_count_button = QtWidgets.QPushButton(self.centralwidget)
         self.draw_count_button.setGeometry(QtCore.QRect(730, 280, 89, 25))
         self.draw_count_button.setObjectName("draw_count_button")
-        self.draw_count_button.clicked.connect(draw_counting)
+        self.draw_count_button.clicked.connect(self.counting)
 
 
         self.start_button = QtWidgets.QPushButton(self.centralwidget)
@@ -340,6 +342,13 @@ class Ui_MainWindow(object):
             camera_source_alarm()
         else:
             draw_region()
+
+    def counting(self):
+        global path
+        if path is None or len(path) == 0:
+            camera_source_alarm()
+        else:
+            draw_counting()
 
     def video(self):
         global path, count
