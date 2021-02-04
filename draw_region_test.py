@@ -385,6 +385,7 @@ class Ui_MainWindow(object):
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setFixedSize(900, 650)
         self.setupUi(self)
         self.settings = QtCore.QSettings()
         restore(self.settings)

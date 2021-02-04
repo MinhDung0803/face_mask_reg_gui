@@ -16,7 +16,7 @@ global th, \
     light_alarm, \
     sound_alarm, \
     both_alarm, \
-    count,  \
+    count, \
     height, \
     width, \
     draw_region_points, \
@@ -24,25 +24,29 @@ global th, \
     draw_region_flag, \
     draw_count_flag, \
     default_counting_points, \
-    draw_counting_points
+    draw_counting_points, \
+    w_width, \
+    w_height
 
 # variables
 path = None
 count = 0
 height = 480
 width = 640
+w_width = 900
+w_height = 650
 draw_region_points = []
 extra_pixels = 5  # for default points
 default_region_points = [
-    [(0+extra_pixels, 0+extra_pixels), (width-extra_pixels, 0+extra_pixels)],
-    [(width-extra_pixels, 0+extra_pixels), (width-extra_pixels, height-extra_pixels)],
-    [(width-extra_pixels, height-extra_pixels), (0+extra_pixels, height-extra_pixels)],
-    [(0+extra_pixels, height-extra_pixels), (0+extra_pixels, 0+extra_pixels)]
+    [(0 + extra_pixels, 0 + extra_pixels), (width - extra_pixels, 0 + extra_pixels)],
+    [(width - extra_pixels, 0 + extra_pixels), (width - extra_pixels, height - extra_pixels)],
+    [(width - extra_pixels, height - extra_pixels), (0 + extra_pixels, height - extra_pixels)],
+    [(0 + extra_pixels, height - extra_pixels), (0 + extra_pixels, 0 + extra_pixels)]
 ]
 draw_region_flag = False
 
 draw_counting_points = []
-default_counting_points = [[(0, int(height/2)), (width, int(height/2))]]
+default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 
 
@@ -101,15 +105,15 @@ class Thread(QtCore.QThread):
     def stop_thread(self):
         global path, \
             draw_region_flag, \
-            default_region_points, \
-            default_counting_points, \
-            draw_count_flag
+            draw_count_flag, \
+            draw_counting_points, \
+            draw_region_points
         self._go = False
         path = None
         draw_region_flag = False
         draw_count_flag = False
-        default_counting_points = []
-        default_region_points = []
+        draw_counting_points = []
+        draw_region_points = []
 
 
 def close_window():
@@ -578,7 +582,6 @@ class Ui_MainWindow(object):
         self.stopbutton.setObjectName("stopbutton")
         self.stopbutton.clicked.connect(close_window)
 
-
         # display video
         self.display_video = QtWidgets.QLabel(self.centralwidget)
         self.display_video.setGeometry(QtCore.QRect(10, 10, 640, 480))
@@ -731,7 +734,6 @@ class Ui_MainWindow(object):
         self.group_alarm_option.setMouseTracking(True)
         self.group_alarm_option.setAutoFillBackground(False)
         self.group_alarm_option.setObjectName("group_alarm_option")
-
 
         # light alarm option
         self.light_radio_button = QtWidgets.QRadioButton(self.group_alarm_option)
@@ -1084,8 +1086,10 @@ class Ui_MainWindow(object):
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, **kwargs):
+        global w_height, w_width
         super().__init__(*args, **kwargs)
         self.setupUi(self)
+        self.setFixedSize(w_width, w_height)
         self.settings = QtCore.QSettings()
         # print(self.settings.fileName())
         restore(self.settings)
@@ -1105,4 +1109,3 @@ if __name__ == "__main__":
     w = MainWindow()
     w.show()
     sys.exit(app.exec_())
-
