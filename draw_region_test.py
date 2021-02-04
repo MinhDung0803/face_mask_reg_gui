@@ -208,7 +208,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super().__init__(*args, **kwargs)
         self.setupUi(self)
         self.settings = QtCore.QSettings()
-        print(self.settings.fileName())
         restore(self.settings)
 
     def closeEvent(self, event):
