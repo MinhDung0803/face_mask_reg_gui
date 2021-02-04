@@ -12,15 +12,38 @@ import cv2
 
 
 # all global variables
-global th, path, light_alarm, sound_alarm, both_alarm, count, height, width, all_point
+global th, \
+    path, \
+    light_alarm, \
+    sound_alarm, \
+    both_alarm, \
+    count, height, \
+    width, \
+    draw_region_points, \
+    default_region_points, \
+    draw_region_flag, \
+    draw_count_flag, \
+    default_counting_points, \
+    draw_counting_points
 
-# config
+# variables
 path = None
 count = 0
 height = 480
 width = 640
-all_point = []
+draw_region_points = []
+extra_pixels = 5  # for default points
+default_region_points = [
+    [(0+extra_pixels, 0+extra_pixels), (width-extra_pixels, 0+extra_pixels)],
+    [(width-extra_pixels, 0+extra_pixels), (width-extra_pixels, height-extra_pixels)],
+    [(width-extra_pixels, height-extra_pixels), (0+extra_pixels, height-extra_pixels)],
+    [(0+extra_pixels, height-extra_pixels), (0+extra_pixels, 0+extra_pixels)]
+]
+draw_region_flag = False
 
+draw_counting_points = []
+default_counting_points = [[(0, int(height/2)), (width, int(height/2))]]
+draw_count_flag = False
 
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
@@ -30,16 +53,39 @@ class Thread(QtCore.QThread):
         self._go = None
 
     def run(self):
-        global count, height, width, all_point
+        global count, \
+            height, \
+            width, \
+            draw_region_points, \
+            default_region_points, \
+            draw_region_flag, \
+            default_counting_points, \
+            draw_count_flag, \
+            draw_counting_points
         cap = cv2.VideoCapture(path)
         self._go = True
         while self._go:
             ret, frame = cap.read()
             if ret:
                 frame = cv2.resize(frame, (width, height))
+
+                # condition to draw region
+                if not draw_region_flag:
+                    final_region_points = default_region_points
+                else:
+                    final_region_points = draw_region_points
                 # draw region
-                for i, point in enumerate(all_point):
+                for i, point in enumerate(final_region_points):
                     cv2.line(frame, point[0], point[1], (0, 0, 255), 2)
+
+                # condition to draw counting region
+                if not draw_count_flag:
+                    final_counting_points = default_counting_points
+                else:
+                    final_counting_points = draw_counting_points
+                # draw counting region
+                for i, point in enumerate(final_counting_points):
+                    cv2.line(frame, point[0], point[1], (0, 255, 255), 2)
 
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = rgbImage.shape
@@ -51,16 +97,24 @@ class Thread(QtCore.QThread):
                 check_input_frame()
                 time.sleep(0.5)
 
+
     def stop_thread(self):
-        global path
+        global path, \
+            draw_region_flag, \
+            default_region_points, \
+            default_counting_points, \
+            draw_count_flag
         self._go = False
         path = None
+        draw_region_flag = False
+        draw_count_flag = False
+        default_counting_points = []
+        default_region_points = []
 
 
 def close_window():
     th.stop_thread()
     time.sleep(1)
-    # exit()
 
 
 def camera_source_alarm():
@@ -110,43 +164,74 @@ def mouse_callback(event, x, y, flags, param):
         mouse_down = False
 
 
-def shape_selection(event, x, y, flags, param):
-    global ref_point, crop
+def shape_selection_for_region(event, x, y, flags, param):
+    global ref_point, draw_region_points
     if event == cv2.EVENT_LBUTTONDOWN:
         ref_point = [(x, y)]
     elif event == cv2.EVENT_LBUTTONUP:
 
         ref_point.append((x, y))
-        all_point.append(ref_point)
+        draw_region_points.append(ref_point)
         cv2.line(image, ref_point[0], ref_point[1], (0, 0, 255), 2)
-        cv2.imshow("image", image)
+        cv2.imshow("Draw ROI", image)
 
 
-def draw():
-    global path, width, height, all_point, image
+def shape_selection_for_counting(event, x, y, flags, param):
+    global ref_point_c, draw_counting_points
+    if event == cv2.EVENT_LBUTTONDOWN:
+        ref_point_c = [(x, y)]
+    elif event == cv2.EVENT_LBUTTONUP:
+
+        ref_point_c.append((x, y))
+        draw_counting_points.append(ref_point_c)
+        cv2.line(image, ref_point_c[0], ref_point_c[1], (0, 255, 255), 2)
+        cv2.imshow("Draw Counting Region", image)
+
+
+def draw_region():
+    global path, width, height, draw_region_points, image, draw_region_flag
+    draw_region_flag = True
     # read and write original image
     cap = cv2.VideoCapture(path)
     ret, frame = cap.read()
     frame = cv2.resize(frame, (width, height))
     if ret:
         cv2.imwrite("original_image.jpg", frame)
-    # draw on original image and write when done
-    image = cv2.imread("original_image.jpg")
-    clone = image.copy()
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", shape_selection)
-    while True:
-        cv2.imshow("image", image)
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord("r"):
-            image = clone.copy()
-            all_point = []
-        elif key == ord("q"):
-            break
-    cv2.imwrite('draw_image.jpg', image)
+        # draw on original image and write when done
+        image = cv2.imread("original_image.jpg")
+        clone = image.copy()
+        cv2.namedWindow("Draw ROI")
+        cv2.setMouseCallback("Draw ROI", shape_selection_for_region)
+        while True:
+            cv2.imshow("Draw ROI", image)
+            key = cv2.waitKey(1)
+            if key == 32:
+                image = clone.copy()
+                draw_region_points = []
+            elif key == 13:
+                break
+    cv2.imwrite('draw_region_image.jpg', image)
+    cap.release()
     cv2.destroyAllWindows()
 
 
+def draw_counting():
+    global path, width, height, draw_counting_points, image, draw_count_flag
+    draw_count_flag = True
+    image = cv2.imread("draw_region_image.jpg")
+    clone = image.copy()
+    cv2.namedWindow("Draw Counting Region")
+    cv2.setMouseCallback("Draw Counting Region", shape_selection_for_counting)
+    while True:
+        cv2.imshow("Draw Counting Region", image)
+        key = cv2.waitKey(1)
+        if key == 32:
+            image = clone.copy()
+            draw_counting_points = []
+        elif key == 13:
+            break
+    cv2.imwrite('draw_counting_image.jpg', image)
+    cv2.destroyAllWindows()
 
 
 def restore(settings):
@@ -206,11 +291,17 @@ class Ui_MainWindow(object):
         self.input.setGeometry(QtCore.QRect(30, 510, 541, 25))
         self.input.setObjectName("input")
 
+        # draw region
+        self.draw_region_button = QtWidgets.QPushButton(self.centralwidget)
+        self.draw_region_button.setGeometry(QtCore.QRect(730, 230, 89, 25))
+        self.draw_region_button.setObjectName("draw_region_button")
+        self.draw_region_button.clicked.connect(self.region)
 
-        self.drawbutton = QtWidgets.QPushButton(self.centralwidget)
-        self.drawbutton.setGeometry(QtCore.QRect(730, 280, 89, 25))
-        self.drawbutton.setObjectName("drawbutton")
-        self.drawbutton.clicked.connect(draw)
+        # draw counting line
+        self.draw_count_button = QtWidgets.QPushButton(self.centralwidget)
+        self.draw_count_button.setGeometry(QtCore.QRect(730, 280, 89, 25))
+        self.draw_count_button.setObjectName("draw_count_button")
+        self.draw_count_button.clicked.connect(draw_counting)
 
 
         self.start_button = QtWidgets.QPushButton(self.centralwidget)
@@ -243,6 +334,12 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    def region(self):
+        global path
+        if path is None or len(path) == 0:
+            camera_source_alarm()
+        else:
+            draw_region()
 
     def video(self):
         global path, count
@@ -272,7 +369,8 @@ class Ui_MainWindow(object):
         self.start_button.setText(_translate("MainWindow", "Start"))
         self.stopbutton.setText(_translate("MainWindow", "Stop"))
         self.applybutton.setText(_translate("MainWindow", "Apply"))
-        self.drawbutton.setText(_translate("MainWindow", "Draw"))
+        self.draw_region_button.setText(_translate("MainWindow", "Draw ROI"))
+        self.draw_count_button.setText(_translate("MainWindow", "Draw Count"))
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):

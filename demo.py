@@ -128,7 +128,7 @@ class Ui_MainWindow(object):
 
         # start button
         self.startbutton = QtWidgets.QPushButton(self.centralwidget)
-        self.startbutton.setGeometry(QtCore.QRect(710, 470, 141, 51))
+        self.startbutton.setGeometry(QtCore.QRect(670, 470, 100, 50))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -269,9 +269,21 @@ class Ui_MainWindow(object):
         self.startbutton.setObjectName("startbutton")
         self.startbutton.clicked.connect(self.video)
 
+        # draw ROI button
+        self.drawregionbutton = QtWidgets.QPushButton(self.centralwidget)
+        self.drawregionbutton.setGeometry(QtCore.QRect(790, 470, 100, 50))
+        self.drawregionbutton.setPalette(palette)
+        self.drawregionbutton.setObjectName("drawregionbutton")
+
+        # draw couting line button
+        self.drawcountingbutton = QtWidgets.QPushButton(self.centralwidget)
+        self.drawcountingbutton.setGeometry(QtCore.QRect(790, 540, 100, 50))
+        self.drawcountingbutton.setPalette(palette)
+        self.drawcountingbutton.setObjectName("drawcountingbutton")
+
         # stop button
         self.stopbutton = QtWidgets.QPushButton(self.centralwidget)
-        self.stopbutton.setGeometry(QtCore.QRect(710, 540, 141, 51))
+        self.stopbutton.setGeometry(QtCore.QRect(670, 540, 100, 50))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -411,6 +423,7 @@ class Ui_MainWindow(object):
         self.stopbutton.setPalette(palette)
         self.stopbutton.setObjectName("stopbutton")
         self.stopbutton.clicked.connect(close_window)
+
 
         # display video
         self.display_video = QtWidgets.QLabel(self.centralwidget)
@@ -876,6 +889,8 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "GreenGlobal - GreenLabs - Face-Mask Recognition APP"))
         self.startbutton.setText(_translate("MainWindow", "START"))
         self.stopbutton.setText(_translate("MainWindow", "STOP"))
+        self.drawregionbutton.setText(_translate("MainWindow", "DRAW ROI"))
+        self.drawcountingbutton.setText(_translate("MainWindow", "DRAW COUNT"))
         self.display_video.setText(_translate("MainWindow", "Video"))
         self.group_alarm_option.setTitle(_translate("MainWindow", "Alarm Option"))
         self.light_radio_button.setText(_translate("MainWindow", "Light"))
