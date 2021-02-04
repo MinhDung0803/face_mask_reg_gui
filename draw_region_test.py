@@ -12,9 +12,14 @@ import cv2
 
 
 # all global variables
-global th, path, light_alarm, sound_alarm, both_alarm, count
+global th, path, light_alarm, sound_alarm, both_alarm, count, height, width, all_point
+
+# config
 path = None
 count = 0
+height = 480
+width = 640
+all_point = []
 
 
 class Thread(QtCore.QThread):
@@ -25,13 +30,17 @@ class Thread(QtCore.QThread):
         self._go = None
 
     def run(self):
-        global count
+        global count, height, width, all_point
         cap = cv2.VideoCapture(path)
         self._go = True
         while self._go:
             ret, frame = cap.read()
             if ret:
-                frame = cv2.resize(frame, (640, 480))
+                frame = cv2.resize(frame, (width, height))
+                # draw region
+                for i, point in enumerate(all_point):
+                    cv2.line(frame, point[0], point[1], (0, 0, 255), 2)
+
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = rgbImage.shape
                 bytesPerLine = ch * w
@@ -84,6 +93,62 @@ def check_input_frame():
     time.sleep(1)
 
 
+def mouse_callback(event, x, y, flags, param):
+    global mouse_down
+    global step
+
+    mouse_down = False
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if mouse_down is False:
+            mouse_down = True
+            step = 0
+        else:
+            step += 1
+
+    elif event == cv2.EVENT_LBUTTONUP and mouse_down:
+        mouse_down = False
+
+
+def shape_selection(event, x, y, flags, param):
+    global ref_point, crop
+    if event == cv2.EVENT_LBUTTONDOWN:
+        ref_point = [(x, y)]
+    elif event == cv2.EVENT_LBUTTONUP:
+
+        ref_point.append((x, y))
+        all_point.append(ref_point)
+        cv2.line(image, ref_point[0], ref_point[1], (0, 0, 255), 2)
+        cv2.imshow("image", image)
+
+
+def draw():
+    global path, width, height, all_point, image
+    # read and write original image
+    cap = cv2.VideoCapture(path)
+    ret, frame = cap.read()
+    frame = cv2.resize(frame, (width, height))
+    if ret:
+        cv2.imwrite("original_image.jpg", frame)
+    # draw on original image and write when done
+    image = cv2.imread("original_image.jpg")
+    clone = image.copy()
+    cv2.namedWindow("image")
+    cv2.setMouseCallback("image", shape_selection)
+    while True:
+        cv2.imshow("image", image)
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("r"):
+            image = clone.copy()
+            all_point = []
+        elif key == ord("q"):
+            break
+    cv2.imwrite('draw_image.jpg', image)
+    cv2.destroyAllWindows()
+
+
+
+
 def restore(settings):
     finfo = QtCore.QFileInfo(settings.fileName())
     if finfo.exists() and finfo.isFile():
@@ -121,7 +186,7 @@ class Ui_MainWindow(object):
         MainWindow.resize(900, 650)
 
         # define video thread
-        global th
+        global th, width, height
         th = Thread(MainWindow)
 
         MainWindow.setMouseTracking(True)
@@ -131,7 +196,7 @@ class Ui_MainWindow(object):
 
 
         self.display_video = QtWidgets.QLabel(self.centralwidget)
-        self.display_video.setGeometry(QtCore.QRect(30, 20, 640, 480))
+        self.display_video.setGeometry(QtCore.QRect(30, 20, width, height))
         self.display_video.setFrameShape(QtWidgets.QFrame.Box)
         self.display_video.setAlignment(QtCore.Qt.AlignCenter)
         self.display_video.setObjectName("display_video")
@@ -140,6 +205,12 @@ class Ui_MainWindow(object):
         self.input = QtWidgets.QLineEdit(self.centralwidget)
         self.input.setGeometry(QtCore.QRect(30, 510, 541, 25))
         self.input.setObjectName("input")
+
+
+        self.drawbutton = QtWidgets.QPushButton(self.centralwidget)
+        self.drawbutton.setGeometry(QtCore.QRect(730, 280, 89, 25))
+        self.drawbutton.setObjectName("drawbutton")
+        self.drawbutton.clicked.connect(draw)
 
 
         self.start_button = QtWidgets.QPushButton(self.centralwidget)
@@ -201,6 +272,7 @@ class Ui_MainWindow(object):
         self.start_button.setText(_translate("MainWindow", "Start"))
         self.stopbutton.setText(_translate("MainWindow", "Stop"))
         self.applybutton.setText(_translate("MainWindow", "Apply"))
+        self.drawbutton.setText(_translate("MainWindow", "Draw"))
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
