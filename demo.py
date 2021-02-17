@@ -270,6 +270,17 @@ def save(settings):
             settings.endGroup()
 
 
+def check_statistics():
+    import sys
+    app1 = QtWidgets.QApplication(sys.argv)
+    QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
+    QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
+    QtCore.QCoreApplication.setApplicationName("MyApp")
+    x = MainWindow()
+    x.show()
+    sys.exit(app1.exec_())
+
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -978,19 +989,30 @@ class Ui_MainWindow(object):
         self.actionCamera.setObjectName("actionCamera")
         self.actionWebcam = QtWidgets.QAction(MainWindow)
         self.actionWebcam.setObjectName("actionWebcam")
-        self.actionExport_data = QtWidgets.QAction(MainWindow)
-        self.actionExport_data.setObjectName("actionExport_data")
+
+        self.actionSetting = QtWidgets.QAction(MainWindow)
+        self.actionSetting.setObjectName("actionSetting")
+
         self.actionLight = QtWidgets.QAction(MainWindow)
         self.actionLight.setObjectName("actionLight")
         self.actionSound = QtWidgets.QAction(MainWindow)
         self.actionSound.setObjectName("actionSound")
-        self.actionExport_Data = QtWidgets.QAction(MainWindow)
-        self.actionExport_Data.setObjectName("actionExport_Data")
-        self.menuMain.addAction(self.actionExport_Data)
-        self.menubar.addAction(self.menuMain.menuAction())
 
+        self.actionStatistics = QtWidgets.QAction(MainWindow)
+        self.actionStatistics.setObjectName("actionStatistics")
+        self.menuMain.addAction(self.actionStatistics)
+        self.actionStatistics.triggered.connect(self.check)
+
+        self.actionSetting = QtWidgets.QAction(MainWindow)
+        self.actionSetting.setObjectName("actionSetting")
+        self.menuMain.addAction(self.actionSetting)
+
+        self.menubar.addAction(self.menuMain.menuAction())
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def check(self):
+        check_statistics()
 
     def region(self):
         global path
@@ -1078,10 +1100,11 @@ class Ui_MainWindow(object):
         self.menuMain.setTitle(_translate("MainWindow", "Main"))
         self.actionCamera.setText(_translate("MainWindow", "Camera"))
         self.actionWebcam.setText(_translate("MainWindow", "Webcam"))
-        self.actionExport_data.setText(_translate("MainWindow", "Export data"))
+        self.actionStatistics.setText(_translate("MainWindow", "Statistics"))
+        self.actionSetting.setText(_translate("MainWindow", "Setting"))
         self.actionLight.setText(_translate("MainWindow", "Light"))
         self.actionSound.setText(_translate("MainWindow", "Sound"))
-        self.actionExport_Data.setText(_translate("MainWindow", "Export Data"))
+        self.actionSetting.setText(_translate("MainWindow", "Settings"))
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
