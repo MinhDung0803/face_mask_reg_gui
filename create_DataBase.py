@@ -7,13 +7,12 @@ def create_db(dbname):
     c = conn.cursor()
     # Create table - DATA - with 6 features
     c.execute('''CREATE TABLE DATA
-                     ([generated_id] INTEGER PRIMARY KEY,
-                     [Camera_name] text, [Hour] integer, 
+                     ([Camera_name] text, 
+                     [Hour] integer, 
                      [Minute] integer, 
                      [Day] integer, 
                      [Month] integer, 
-                     [Year] integer, 
-                     [Image] text)''')
+                     [Year] integer)''')
     conn.commit()
 
 
@@ -22,13 +21,25 @@ def create_db_test():
     c = conn.cursor()
     # Create table - DATA - with 6 features
     c.execute('''CREATE TABLE DATA
-                     ([generated_id] INTEGER PRIMARY KEY,
-                     [Camera_name] text, [Hour] integer, 
+                     ([Camera_name] text, 
+                     [Hour] integer, 
                      [Minute] integer, 
                      [Day] integer, 
                      [Month] integer, 
-                     [Year] integer, 
-                     [Image] text)''')
+                     [Year] integer)''')
+    conn.commit()
+
+def create_db_test_cl():
+    conn = sqlite3.connect("TestDB.db")
+    c = conn.cursor()
+    # Create table - DATA - with 6 features
+    c.execute('''CREATE TABLE DATA
+                         ([Camera_name] text, 
+                         [Hour] integer, 
+                         [Minute] integer, 
+                         [Day] integer, 
+                         [Month] integer, 
+                         [Year] integer)''')
     conn.commit()
 
 # def insert_data(data):
@@ -37,7 +48,7 @@ def create_db_test():
 #     print("checked")
 
 
-# db_test_name = "Face_Mask_Recognition_DataBase.db"
-# create_db(db_test_name)
+db_test_name = "Face_Mask_Recognition_DataBase.db"
+create_db(db_test_name)
 
-create_db_test()
+# create_db_test_cl()

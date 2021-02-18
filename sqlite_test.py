@@ -3,7 +3,7 @@ import cv2
 import pandas as pd
 from pandas import DataFrame
 
-conn = sqlite3.connect('TestDB.db')  # You can create a new database by changing the name within the quotes
+conn = sqlite3.connect('Face_Mask_Recognition_DataBase.db')  # You can create a new database by changing the name within the quotes
 c = conn.cursor()  # The database will be saved in the location where your 'py' file is saved
 
 
@@ -17,7 +17,7 @@ print(data)
 # print(data_2)
 
 
-ex = {"Client_Name": ["Pham Minh Dung"], "Country_ID": [1], "Date": ["05022021"]}
+ex = {"Client_Name": ["Pham Minh Dung"], "Country_ID": [1], "Date": ["15022021"]}
 add_data = DataFrame.from_dict(ex)
 print(add_data)
 
@@ -54,7 +54,7 @@ while True:
             df = DataFrame(c.fetchall(), columns=['Client_Name', 'Country_ID', 'Date'])
             print(df)
         elif key == ord("t"):
-            date = str(14012019)
+            date = str(15022021)
             query = f"SELECT * FROM CLIENTS WHERE Date = {date}"
             c.execute(query)
             rows = c.fetchall()
