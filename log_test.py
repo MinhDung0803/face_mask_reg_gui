@@ -27,15 +27,63 @@ def plotting_1(camera_name_input_1,
     global c
     if check_day_1 == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_1}' " \
-                f"and Year = {year_input_1} and Day = {day_input_1}"
+                f"and Year = {year_input_1} " \
+                f"and Day = {day_input_1} " \
+                f"and Month = {month_input_1}"
         c.execute(query)
         return_data = c.fetchall()
-
+        x = ["%d" % i for i in range(1, 25, 1)]
+        y = [0 for i in range(1, 25, 1)]
+        for elem in return_data:
+            for i in range(len(y)):
+                if elem[2] - 1 == i:
+                    y[i] += 1
+        plt.bar(x, y)
+        plt.title("Bar chart describes Number of No Face-Mask in "
+                  + str(year_input_1) + "-"
+                  + str(month_input_1) + "-"
+                  + str(day_input_1))
+        plt.xlabel('Hour')
+        plt.ylabel('Number of No Face-Mask')
+        for index, value in enumerate(y):
+            if value != 0:
+                plt.text(index, value, str(value), color="red")
+        if os.path.exists("./figure/figure1.png"):
+            os.remove("./figure/figure1.png")
+        plt.savefig('./figure/figure1.png')
+        plt.close()
+        time.sleep(0.5)
     elif check_month_1 == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_1}' " \
                 f"and Year = {year_input_1} and Month = {month_input_1}"
         c.execute(query)
         return_data = c.fetchall()
+        month_30 = [2, 4, 6, 9, 11]
+        if month_input_1 in month_30:
+            x = ["%d" % i for i in range(1, 31, 1)]
+            y = [0 for i in range(1, 31, 1)]
+        else:
+            x = ["%d" % i for i in range(1, 32, 1)]
+            y = [0 for i in range(1, 32, 1)]
+        for elem in return_data:
+            for i in range(len(y)):
+                if elem[3]-1 == i:
+                    y[i] += 1
+        plt.bar(x, y)
+        plt.title("Bar chart describes Number of No Face-Mask in "
+                  + str(year_input_1) + "-"
+                  + str(month_input_1))
+        plt.xlabel('Day')
+        plt.ylabel('Number of No Face-Mask')
+        for index, value in enumerate(y):
+            if value != 0:
+                plt.text(index, value, str(value), color="red")
+        if os.path.exists("./figure/figure1.png"):
+            os.remove("./figure/figure1.png")
+        plt.savefig('./figure/figure1.png')
+        plt.close()
+        time.sleep(0.5)
+
     elif check_year_1 == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_1}' " \
                 f"and Year = {year_input_1}"
@@ -48,10 +96,12 @@ def plotting_1(camera_name_input_1,
                 if elem[4]-1 == i:
                     y[i] += 1
         plt.bar(x, y)
+        plt.title("Bar chart describes Number of No Face-Mask in " + str(year_input_1))
         plt.xlabel('Month')
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
-            plt.text(index, value, str(value), color="red")
+            if value != 0:
+                plt.text(index, value, str(value), color="red")
         if os.path.exists("./figure/figure1.png"):
             os.remove("./figure/figure1.png")
         plt.savefig('./figure/figure1.png')
@@ -92,7 +142,8 @@ def plotting_2(camera_name_input_2,
         plt.xlabel('Month')
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
-            plt.text(index, value, str(value), color="purple")
+            if value != 0:
+                plt.text(index, value, str(value), color="red")
         if os.path.exists("./figure/figure2.png"):
             os.remove("./figure/figure2.png")
         plt.savefig('./figure/figure2.png')
@@ -377,7 +428,7 @@ class Ui_MainWindow(object):
         else:
             self.display_ploting_1.setScaledContents(True)
             pixmap = QtGui.QPixmap('./figure/figure1.png')
-            os.remove('./figure/figure1.png')
+            # os.remove('./figure/figure1.png')
             self.display_ploting_1.setPixmap(pixmap)
 
     def get_camera_name_2(self):
@@ -420,7 +471,7 @@ class Ui_MainWindow(object):
         else:
             self.display_ploting_2.setScaledContents(True)
             pixmap = QtGui.QPixmap('./figure/figure2.png')
-            os.remove('./figure/figure2.png')
+            # os.remove('./figure/figure2.png')
             self.display_ploting_2.setPixmap(pixmap)
 
 

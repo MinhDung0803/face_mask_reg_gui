@@ -34,8 +34,13 @@ import shutil
 # x = ["M%d" % i for i in range(1, 13, 1)]
 # print(x)
 
-if os.path.exists("figure1.png"):
-    print("True")
-    shutil.rmtree("./figure1.png")
-else:
-    print("False")
+# if os.path.exists("figure1.png"):
+#     print("True")
+#     shutil.rmtree("./figure1.png")
+# else:
+#     print("False")
+
+even_month = [i for i in range(1, 13, 2)]
+print(even_month)
+old_month = [i for i in range(2, 13, 2)]
+print(old_month)
