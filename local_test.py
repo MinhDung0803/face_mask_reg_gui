@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
 import os
+import shutil
 
 # read data from csv file
 # data = pd.read_csv('data.csv')
@@ -35,6 +36,6 @@ import os
 
 if os.path.exists("figure1.png"):
     print("True")
-    os.remove("figure1.png")
+    shutil.rmtree("./figure1.png")
 else:
     print("False")

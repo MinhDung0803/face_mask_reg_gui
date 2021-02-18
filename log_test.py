@@ -11,6 +11,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 import time
 import os
+import shutil
 
 global conn, c
 conn = sqlite3.connect('Face_Mask_Recognition_DataBase.db')
@@ -40,10 +41,7 @@ def plotting_1(camera_name_input_1,
                 f"and Year = {year_input_1}"
         c.execute(query)
         return_data = c.fetchall()
-        t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12 = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        # x = ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12"]
         x = ["M%d" % i for i in range(1, 13, 1)]
-        # y = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12]
         y = [0 for i in range(1, 13, 1)]
         for elem in return_data:
             for i in range(len(y)):
@@ -54,12 +52,52 @@ def plotting_1(camera_name_input_1,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             plt.text(index, value, str(value), color="red")
-        if os.path.exists("figure1.png") is True:
-            os.remove("figure1.png")
-            time.sleep(1)
-        plt.savefig('figure1.png')
+        if os.path.exists("./figure/figure1.png"):
+            os.remove("./figure/figure1.png")
+        plt.savefig('./figure/figure1.png')
+        plt.close()
         time.sleep(0.5)
 
+def plotting_2(camera_name_input_2,
+               day_input_2,
+               month_input_2,
+               year_input_2,
+               check_day_2,
+               check_month_2,
+               check_year_2):
+    global c
+    if check_day_2 == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_2}' " \
+                f"and Year = {year_input_2} and Day = {day_input_2}"
+        c.execute(query)
+        return_data = c.fetchall()
+
+    elif check_month_2 == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_2}' " \
+                f"and Year = {year_input_2} and Month = {month_input_2}"
+        c.execute(query)
+        return_data = c.fetchall()
+    elif check_year_2 == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_2}' " \
+                f"and Year = {year_input_2}"
+        c.execute(query)
+        return_data = c.fetchall()
+        x = ["M%d" % i for i in range(1, 13, 1)]
+        y = [0 for i in range(1, 13, 1)]
+        for elem in return_data:
+            for i in range(len(y)):
+                if elem[4] - 1 == i:
+                    y[i] += 1
+        plt.bar(x, y)
+        plt.xlabel('Month')
+        plt.ylabel('Number of No Face-Mask')
+        for index, value in enumerate(y):
+            plt.text(index, value, str(value), color="purple")
+        if os.path.exists("./figure/figure2.png"):
+            os.remove("./figure/figure2.png")
+        plt.savefig('./figure/figure2.png')
+        plt.close()
+        time.sleep(0.5)
 
 
 class Ui_MainWindow(object):
@@ -263,7 +301,7 @@ class Ui_MainWindow(object):
         self.plot2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
         self.plot2.setGeometry(QtCore.QRect(90, 200, 101, 41))
         self.plot2.setObjectName("plot2")
-        self.plot2.clicked.connect(self.display_ploting_figure_2)
+        self.plot2.clicked.connect(self.display_plotting_figure_2)
 
         self.label_3 = QtWidgets.QLabel(self.groupBox_3_plot2)
         self.label_3.setGeometry(QtCore.QRect(10, 40, 121, 17))
@@ -275,6 +313,7 @@ class Ui_MainWindow(object):
         self.button_camera_name_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
         self.button_camera_name_2.setGeometry(QtCore.QRect(210, 44, 51, 41))
         self.button_camera_name_2.setObjectName("button_camera_name_2")
+        self.button_camera_name_2.clicked.connect(self.get_camera_name_2)
 
         self.display_ploting_2 = QtWidgets.QLabel(self.tab_2)
         self.display_ploting_2.setGeometry(QtCore.QRect(10, 320, 581, 291))
@@ -331,20 +370,59 @@ class Ui_MainWindow(object):
                    check_day_1,
                    check_month_1,
                    check_year_1)
+
         self.display_ploting_1.clear()
         if len(camera_name_input_1) == 0:
             print("None")
         else:
             self.display_ploting_1.setScaledContents(True)
-            pixmap = QtGui.QPixmap('figure1.png')
-            # print(pixmap)
+            pixmap = QtGui.QPixmap('./figure/figure1.png')
+            os.remove('./figure/figure1.png')
             self.display_ploting_1.setPixmap(pixmap)
-            os.remove("figure1.png")
 
-    def display_ploting_figure_2(self):
-        self.display_ploting_2.setScaledContents(True)
-        pixmap = QtGui.QPixmap('figure2.png')
-        self.display_ploting_2.setPixmap(pixmap)
+    def get_camera_name_2(self):
+        global camera_name_input_2
+        camera_name_input_2 = self.input_camera_name_2.text()
+
+    def display_plotting_figure_2(self):
+        global camera_name_input_2
+        check_day_2 = 0
+        check_month_2 = 0
+        check_year_2 = 0
+
+        day_input_2 = self.input_day_2.text()
+        month_input_2 = self.input_month_2.text()
+        year_input_2 = self.input_year_2.text()
+        if self.radioButton_day_2.isChecked():
+            check_day_2 = 1
+            check_month_2 = 0
+            check_year_2 = 0
+        elif self.radioButton_month_2.isChecked():
+            check_day_2 = 0
+            check_month_2 = 1
+            check_year_2 = 0
+        elif self.radioButton_year_1.isChecked():
+            check_day_2 = 0
+            check_month_2 = 0
+            check_year_2 = 1
+
+        plotting_2(camera_name_input_2,
+                   day_input_2,
+                   month_input_2,
+                   year_input_2,
+                   check_day_2,
+                   check_month_2,
+                   check_year_2)
+
+        self.display_ploting_2.clear()
+        if len(camera_name_input_2) == 0:
+            print("None")
+        else:
+            self.display_ploting_2.setScaledContents(True)
+            pixmap = QtGui.QPixmap('./figure/figure2.png')
+            os.remove('./figure/figure2.png')
+            self.display_ploting_2.setPixmap(pixmap)
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
