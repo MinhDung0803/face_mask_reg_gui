@@ -131,13 +131,13 @@ class Thread(QtCore.QThread):
 
 def close_window():
     th.stop_thread()
-    time.sleep(1)
+    time.sleep(0.5)
     # exit()
 
 
 def camera_source_alarm():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Input Camera Warning")
+    alert.setWindowTitle("Camera Source Warning")
     alert.setText('Please input the camera source!')
     alert.exec_()
 
@@ -634,8 +634,12 @@ class Ui_MainWindow(object):
         self.radioButton_year_1.setGeometry(QtCore.QRect(130, 160, 61, 23))
         self.radioButton_year_1.setObjectName("radioButton_year_1")
         self.plot1 = QtWidgets.QPushButton(self.groupBox_plot1)
-        self.plot1.setGeometry(QtCore.QRect(40, 200, 101, 41))
+        self.plot1.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot1.setObjectName("plot1")
+
+        self.export_1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.export_1.setGeometry(QtCore.QRect(110, 200, 81, 41))
+        self.export_1.setObjectName("export_1")
 
         self.label_2 = QtWidgets.QLabel(self.groupBox_plot1)
         self.label_2.setGeometry(QtCore.QRect(10, 40, 121, 17))
@@ -678,8 +682,12 @@ class Ui_MainWindow(object):
         self.radioButton_year_2.setGeometry(QtCore.QRect(130, 160, 61, 23))
         self.radioButton_year_2.setObjectName("radioButton_year_2")
         self.plot2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
-        self.plot2.setGeometry(QtCore.QRect(40, 200, 101, 41))
+        self.plot2.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot2.setObjectName("plot2")
+
+        self.export_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.export_2.setGeometry(QtCore.QRect(110, 200, 81, 41))
+        self.export_2.setObjectName("export_2")
 
         self.label_3 = QtWidgets.QLabel(self.groupBox_3_plot2)
         self.label_3.setGeometry(QtCore.QRect(10, 40, 121, 17))
@@ -699,7 +707,7 @@ class Ui_MainWindow(object):
         self.tabWidget.addTab(self.tab_2, "")
 
         ######
-        ## events managing
+        ## events
         # get camera name and plot - 1
         self.plot1.clicked.connect(self.display_plotting_figure_1)
         self.button_camera_name_1.clicked.connect(self.get_camera_name_1)
@@ -715,7 +723,8 @@ class Ui_MainWindow(object):
         # start video
         self.start.clicked.connect(self.video)
         # stop video
-        self.stop.clicked.connect(close_window)
+        self.stop.clicked.connect(self.stop_process)
+        # self.stop.clicked.connect(close_window)
         # draw region
         self.draw_region.clicked.connect(self.region)
         # draw counting line
@@ -892,6 +901,22 @@ class Ui_MainWindow(object):
             # os.remove('./figure/figure2.png')
             self.display_ploting_2.setPixmap(pixmap)
 
+    def stop_process(self):
+        # self.display_video.clear()
+        # self.display_video.setText("The process has been stopped")
+        # font_stop = QtGui.QFont()
+        # font_stop.setPointSize(30)
+        # self.display_video.setFont(font_stop)
+        self.display_video.clear()
+        self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
+        close_window()
+        # self.display_video.clear()
+        # self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
+        # self.display_video.setText("The process has been stopped")
+        # font_stop = QtGui.QFont()
+        # font_stop.setPointSize(30)
+        # self.display_video.setFont(font_stop)
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -939,6 +964,8 @@ class Ui_MainWindow(object):
         self.label_3.setText(_translate("MainWindow", "Name of camera"))
         self.button_camera_name_2.setText(_translate("MainWindow", "OK"))
         self.display_ploting_2.setText(_translate("MainWindow", "Ploting_2"))
+        self.export_1.setText(_translate("MainWindow", "EXPORT 1"))
+        self.export_2.setText(_translate("MainWindow", "EXPORT 2"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("MainWindow", "Tab 2"))
         self.menuMain.setTitle(_translate("MainWindow", "Main"))
 

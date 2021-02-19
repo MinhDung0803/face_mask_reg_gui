@@ -215,7 +215,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>40</y>
+         <y>30</y>
          <width>41</width>
          <height>17</height>
         </rect>
@@ -228,7 +228,7 @@
        <property name="geometry">
         <rect>
          <x>50</x>
-         <y>40</y>
+         <y>30</y>
          <width>61</width>
          <height>26</height>
         </rect>
@@ -238,7 +238,7 @@
        <property name="geometry">
         <rect>
          <x>120</x>
-         <y>40</y>
+         <y>30</y>
          <width>21</width>
          <height>17</height>
         </rect>
@@ -251,10 +251,23 @@
        <property name="geometry">
         <rect>
          <x>150</x>
-         <y>40</y>
+         <y>30</y>
          <width>61</width>
          <height>26</height>
         </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="pushButton_set_time">
+       <property name="geometry">
+        <rect>
+         <x>70</x>
+         <y>60</y>
+         <width>89</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>SET TIME</string>
        </property>
       </widget>
      </widget>
@@ -509,14 +522,14 @@
       <widget class="QPushButton" name="plot1">
        <property name="geometry">
         <rect>
-         <x>40</x>
+         <x>10</x>
          <y>200</y>
-         <width>101</width>
+         <width>81</width>
          <height>41</height>
         </rect>
        </property>
        <property name="text">
-        <string>PLOT</string>
+        <string>PLOT 1</string>
        </property>
       </widget>
       <widget class="QLabel" name="label_2">
@@ -553,6 +566,19 @@
        </property>
        <property name="text">
         <string>OK</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="export_1">
+       <property name="geometry">
+        <rect>
+         <x>110</x>
+         <y>200</y>
+         <width>81</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>EXPORT 1</string>
        </property>
       </widget>
      </widget>
@@ -679,14 +705,14 @@
       <widget class="QPushButton" name="plot2">
        <property name="geometry">
         <rect>
-         <x>40</x>
+         <x>10</x>
          <y>200</y>
-         <width>101</width>
+         <width>81</width>
          <height>41</height>
         </rect>
        </property>
        <property name="text">
-        <string>PLOT</string>
+        <string>PLOT 2</string>
        </property>
       </widget>
       <widget class="QLabel" name="label_3">
@@ -723,6 +749,19 @@
        </property>
        <property name="text">
         <string>OK</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="export_2">
+       <property name="geometry">
+        <rect>
+         <x>110</x>
+         <y>200</y>
+         <width>81</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>EXPORT 2</string>
        </property>
       </widget>
      </widget>

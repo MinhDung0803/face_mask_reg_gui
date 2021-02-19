@@ -59,7 +59,7 @@ draw_counting_points = []
 default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 # connect to sql database
-conn = sqlite3.connect('Face_Mask_Recognition_DataBase.db')
+conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
 c = conn.cursor()
 
 
@@ -291,7 +291,7 @@ def plotting_1(camera_name_input_1,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index, value, str(value), color="red", size='xx-large')
+                plt.text(index-0.2, value, str(value), color="red", size='xx-large')
         if os.path.exists("./figure/figure1.png"):
             os.remove("./figure/figure1.png")
         plt.savefig('./figure/figure1.png')
@@ -350,7 +350,7 @@ def plotting_1(camera_name_input_1,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index, value, str(value), color="red", size='xx-large')
+                plt.text(index-0.2, value, str(value), color="red", size='xx-large')
         if os.path.exists("./figure/figure1.png"):
             os.remove("./figure/figure1.png")
         plt.savefig('./figure/figure1.png')
@@ -387,7 +387,7 @@ def plotting_2(camera_name_input_2,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index, value, str(value), color="red", size='xx-large')
+                plt.text(index-0.2, value, str(value), color="green", size='xx-large')
         if os.path.exists("./figure/figure2.png"):
             os.remove("./figure/figure2.png")
         plt.savefig('./figure/figure2.png')
@@ -419,7 +419,7 @@ def plotting_2(camera_name_input_2,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index - 0.3, value, str(value), color="red", size='xx-large')
+                plt.text(index - 0.3, value, str(value), color="green", size='xx-large')
         if os.path.exists("./figure/figure2.png"):
             os.remove("./figure/figure2.png")
         plt.savefig('./figure/figure2.png')
@@ -445,7 +445,7 @@ def plotting_2(camera_name_input_2,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index, value, str(value), color="red", size='xx-large')
+                plt.text(index-0.2, value, str(value), color="green", size='xx-large')
         if os.path.exists("./figure/figure2.png"):
             os.remove("./figure/figure2.png")
         plt.savefig('./figure/figure2.png')

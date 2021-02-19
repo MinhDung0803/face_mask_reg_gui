@@ -48,7 +48,7 @@ def create_db_test_cl():
 #     print("checked")
 
 
-db_test_name = "Face_Mask_Recognition_DataBase.db"
+db_test_name = "./database/Face_Mask_Recognition_DataBase.db"
 create_db(db_test_name)
 
 # create_db_test_cl()
