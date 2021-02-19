@@ -21,15 +21,17 @@ import shutil
 # plt.savefig('figure2.png')
 # plt.show()
 
-# x = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]
-# y = [3, 4, 5, 6, 7, 4, 4, 7, 4, 9, 2, 2]
-#
-# plt.bar(x, y)
-# plt.xlabel('Month')
-# plt.ylabel('Number of No Face-Mask')
-# for index, value in enumerate(y):
-#     plt.text(index, value, str(value), color ="red")
-# plt.show()
+x = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]
+y = [3, 4, 5, 6, 7, 4, 4, 7, 4, 9, 2, 2]
+
+plt.figure(figsize=(10, 5))
+plt.bar(x, y)
+plt.xlabel('Month')
+plt.ylabel('Number of No Face-Mask')
+for index, value in enumerate(y):
+    plt.text(index, value, str(value), color ="red", size='xx-large')
+plt.savefig('bar.png')
+plt.show()
 
 # x = ["M%d" % i for i in range(1, 13, 1)]
 # print(x)
@@ -40,7 +42,7 @@ import shutil
 # else:
 #     print("False")
 
-even_month = [i for i in range(1, 13, 2)]
-print(even_month)
-old_month = [i for i in range(2, 13, 2)]
-print(old_month)
+# even_month = [i for i in range(1, 13, 2)]
+# print(even_month)
+# old_month = [i for i in range(2, 13, 2)]
+# print(old_month)
