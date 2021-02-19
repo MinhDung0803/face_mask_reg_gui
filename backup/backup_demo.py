@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import time
 import os
 import cv2
+import pandas as pd
 
 # all global variables
 global th, \
@@ -32,11 +33,15 @@ global th, \
     w_height, \
     conn, \
     c, \
-    name
+    name, \
+    camera_name_input_1, \
+    camera_name_input_2
 
 # variables
 path = None
 name = None
+camera_name_input_1 = ""
+camera_name_input_2 = ""
 count = 0
 height = 480
 width = 640
@@ -51,10 +56,8 @@ default_region_points = [
     [(0 + extra_pixels, 0 + extra_pixels), (width - extra_pixels, 0 + extra_pixels)],
     [(width - extra_pixels, 0 + extra_pixels), (width - extra_pixels, height - extra_pixels)],
     [(width - extra_pixels, height - extra_pixels), (0 + extra_pixels, height - extra_pixels)],
-    [(0 + extra_pixels, height - extra_pixels), (0 + extra_pixels, 0 + extra_pixels)]
-]
+    [(0 + extra_pixels, height - extra_pixels), (0 + extra_pixels, 0 + extra_pixels)]]
 draw_region_flag = False
-
 draw_counting_points = []
 default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
@@ -131,13 +134,13 @@ class Thread(QtCore.QThread):
 
 def close_window():
     th.stop_thread()
-    time.sleep(1)
+    time.sleep(0.5)
     # exit()
 
 
 def camera_source_alarm():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Input Camera Warning")
+    alert.setWindowTitle("Camera Source Warning")
     alert.setText('Please input the camera source!')
     alert.exec_()
 
@@ -169,6 +172,13 @@ def check_camera_name():
     alert = QtWidgets.QMessageBox()
     alert.setWindowTitle("Camera Name Warning")
     alert.setText('Please set the name of Camera!')
+    alert.exec_()
+
+
+def check_camera_name_plotting():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Camera Name for Statistics Warning")
+    alert.setText('Please input the name of Camera to query in Database!')
     alert.exec_()
 
 
@@ -259,19 +269,21 @@ def draw_counting():
     cv2.destroyAllWindows()
 
 
-def plotting_1(camera_name_input_1,
-               day_input_1,
-               month_input_1,
-               year_input_1,
-               check_day_1,
-               check_month_1,
-               check_year_1):
+def plotting(name,
+             color,
+             camera_name_input,
+             day_input,
+             month_input,
+             year_input,
+             check_day,
+             check_month,
+             check_year):
     global c
-    if check_day_1 == 1:
-        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_1}' " \
-                f"and Year = {year_input_1} " \
-                f"and Day = {day_input_1} " \
-                f"and Month = {month_input_1} "
+    if check_day == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input} " \
+                f"and Day = {day_input}" \
+                f"and Month = {month_input}"
         c.execute(query)
         return_data = c.fetchall()
         x = ["%d" % i for i in range(1, 25, 1)]
@@ -283,123 +295,27 @@ def plotting_1(camera_name_input_1,
         plt.figure(figsize=(10, 5))
         plt.bar(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
-                  + str(year_input_1) + "-"
-                  + str(month_input_1) + "-"
-                  + str(day_input_1) + "("
+                  + str(year_input) + "-"
+                  + str(month_input) + "-"
+                  + str(day_input) + "("
                   + str(len(return_data)) + ")")
         plt.xlabel('Hour')
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index-0.2, value, str(value), color="red", size='xx-large')
-        if os.path.exists("./figure/figure1.png"):
-            os.remove("./figure/figure1.png")
-        plt.savefig('./figure/figure1.png')
+                plt.text(index-0.2, value, str(value), color=color, size='xx-large')
+        if os.path.exists("./figure/" + name):
+            os.remove("./figure/" + name)
+        plt.savefig("./figure/" + name)
         plt.close()
         time.sleep(0.5)
-    elif check_month_1 == 1:
-        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_1}' " \
-                f"and Year = {year_input_1} and Month = {month_input_1}"
+    elif check_month == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input} and Month = {month_input}"
         c.execute(query)
         return_data = c.fetchall()
         month_30 = [2, 4, 6, 9, 11]
-        if month_input_1 in month_30:
-            x = ["%d" % i for i in range(1, 31, 1)]
-            y = [0 for i in range(1, 31, 1)]
-        else:
-            x = ["%d" % i for i in range(1, 32, 1)]
-            y = [0 for i in range(1, 32, 1)]
-        for elem in return_data:
-            for i in range(len(y)):
-                if elem[3]-1 == i:
-                    y[i] += 1
-        plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
-        plt.title("Bar chart describes Number of No Face-Mask in "
-                  + str(year_input_1) + "-"
-                  + str(month_input_1) + "("
-                  + str(len(return_data)) + ")")
-        plt.xlabel('Day')
-        plt.ylabel('Number of No Face-Mask')
-        for index, value in enumerate(y):
-            if value != 0:
-                plt.text(index-0.3, value, str(value), color="red", size='xx-large')
-        if os.path.exists("./figure/figure1.png"):
-            os.remove("./figure/figure1.png")
-        plt.savefig('./figure/figure1.png')
-        plt.close()
-        time.sleep(0.5)
-
-    elif check_year_1 == 1:
-        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_1}' " \
-                f"and Year = {year_input_1}"
-        c.execute(query)
-        return_data = c.fetchall()
-        x = ["M%d" % i for i in range(1, 13, 1)]
-        y = [0 for i in range(1, 13, 1)]
-        for elem in return_data:
-            for i in range(len(y)):
-                if elem[4]-1 == i:
-                    y[i] += 1
-        plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
-        plt.title("Bar chart describes Number of No Face-Mask in "
-                  + str(year_input_1) + "("
-                  + str(len(return_data)) + ")")
-        plt.xlabel('Month')
-        plt.ylabel('Number of No Face-Mask')
-        for index, value in enumerate(y):
-            if value != 0:
-                plt.text(index-0.2, value, str(value), color="red", size='xx-large')
-        if os.path.exists("./figure/figure1.png"):
-            os.remove("./figure/figure1.png")
-        plt.savefig('./figure/figure1.png')
-        plt.close()
-        time.sleep(0.5)
-
-def plotting_2(camera_name_input_2,
-               day_input_2,
-               month_input_2,
-               year_input_2,
-               check_day_2,
-               check_month_2,
-               check_year_2):
-    global c
-    if check_day_2 == 1:
-        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_2}' " \
-                f"and Year = {year_input_2} and Day = {day_input_2}"
-        c.execute(query)
-        return_data = c.fetchall()
-        x = ["%d" % i for i in range(1, 25, 1)]
-        y = [0 for i in range(1, 25, 1)]
-        for elem in return_data:
-            for i in range(len(y)):
-                if elem[2] - 1 == i:
-                    y[i] += 1
-        plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
-        plt.title("Bar chart describes Number of No Face-Mask in "
-                  + str(year_input_2) + "-"
-                  + str(month_input_2) + "-"
-                  + str(day_input_2) + "("
-                  + str(len(return_data)) + ")")
-        plt.xlabel('Hour')
-        plt.ylabel('Number of No Face-Mask')
-        for index, value in enumerate(y):
-            if value != 0:
-                plt.text(index-0.2, value, str(value), color="green", size='xx-large')
-        if os.path.exists("./figure/figure2.png"):
-            os.remove("./figure/figure2.png")
-        plt.savefig('./figure/figure2.png')
-        plt.close()
-        time.sleep(0.5)
-    elif check_month_2 == 1:
-        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_2}' " \
-                f"and Year = {year_input_2} and Month = {month_input_2}"
-        c.execute(query)
-        return_data = c.fetchall()
-        month_30 = [2, 4, 6, 9, 11]
-        if month_input_2 in month_30:
+        if month_input in month_30:
             x = ["%d" % i for i in range(1, 31, 1)]
             y = [0 for i in range(1, 31, 1)]
         else:
@@ -412,22 +328,22 @@ def plotting_2(camera_name_input_2,
         plt.figure(figsize=(10, 5))
         plt.bar(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
-                  + str(year_input_2) + "-"
-                  + str(month_input_2) + "("
+                  + str(year_input) + "-"
+                  + str(month_input) + "("
                   + str(len(return_data)) + ")")
         plt.xlabel('Day')
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index - 0.3, value, str(value), color="green", size='xx-large')
-        if os.path.exists("./figure/figure2.png"):
-            os.remove("./figure/figure2.png")
-        plt.savefig('./figure/figure2.png')
+                plt.text(index - 0.3, value, str(value), color=color, size='xx-large')
+        if os.path.exists("./figure/" + name):
+            os.remove("./figure/" + name)
+        plt.savefig("./figure/" + name)
         plt.close()
         time.sleep(0.5)
-    elif check_year_2 == 1:
-        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input_2}' " \
-                f"and Year = {year_input_2}"
+    elif check_year == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input}"
         c.execute(query)
         return_data = c.fetchall()
         x = ["M%d" % i for i in range(1, 13, 1)]
@@ -439,16 +355,16 @@ def plotting_2(camera_name_input_2,
         plt.figure(figsize=(10, 5))
         plt.bar(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
-                  + str(year_input_2) + "("
+                  + str(year_input) + "("
                   + str(len(return_data)) + ")")
         plt.xlabel('Month')
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index-0.2, value, str(value), color="green", size='xx-large')
-        if os.path.exists("./figure/figure2.png"):
-            os.remove("./figure/figure2.png")
-        plt.savefig('./figure/figure2.png')
+                plt.text(index-0.2, value, str(value), color=color, size='xx-large')
+        if os.path.exists("./figure/" + name):
+            os.remove("./figure/" + name)
+        plt.savefig("./figure/" + name)
         plt.close()
         time.sleep(0.5)
 
@@ -483,6 +399,51 @@ def save(settings):
                     settings.setValue(name, w.property(name))
             settings.endGroup()
 
+
+def export_data(camera_name_input,
+               day_input,
+               month_input,
+               year_input,
+               check_day,
+               check_month,
+               check_year):
+    global c
+    if check_day == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input} " \
+                f"and Day = {day_input} " \
+                f"and Month = {month_input} "
+        c.execute(query)
+        return_data = c.fetchall()
+        df = pd.DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
+        name = str(camera_name_input)+"-"\
+               +str(day_input)+"."\
+               +str(month_input)+"."\
+               +str(year_input)+"-"\
+               +"NoFaceMaskData.csv"
+        df.to_csv('./export_data/' + name)
+    elif check_month == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input} " \
+                f"and Month = {month_input} "
+        c.execute(query)
+        return_data = c.fetchall()
+        df = pd.DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
+        name = str(camera_name_input) + "-" \
+               + str(month_input) + "." \
+               + str(year_input) + "-" \
+               + "NoFaceMaskData.csv"
+        df.to_csv('./export_data/' + name)
+    elif check_year == 1:
+        query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input} "
+        c.execute(query)
+        return_data = c.fetchall()
+        df = pd.DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
+        name = str(camera_name_input) + "-" \
+               + str(year_input) + "-" \
+               + "NoFaceMaskData.csv"
+        df.to_csv('./export_data/' + name)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -633,9 +594,14 @@ class Ui_MainWindow(object):
         self.radioButton_year_1 = QtWidgets.QRadioButton(self.groupBox_plot1)
         self.radioButton_year_1.setGeometry(QtCore.QRect(130, 160, 61, 23))
         self.radioButton_year_1.setObjectName("radioButton_year_1")
+        self.radioButton_year_1.setChecked(True)
         self.plot1 = QtWidgets.QPushButton(self.groupBox_plot1)
-        self.plot1.setGeometry(QtCore.QRect(40, 200, 101, 41))
+        self.plot1.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot1.setObjectName("plot1")
+
+        self.export_1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.export_1.setGeometry(QtCore.QRect(110, 200, 81, 41))
+        self.export_1.setObjectName("export_1")
 
         self.label_2 = QtWidgets.QLabel(self.groupBox_plot1)
         self.label_2.setGeometry(QtCore.QRect(10, 40, 121, 17))
@@ -677,9 +643,14 @@ class Ui_MainWindow(object):
         self.radioButton_year_2 = QtWidgets.QRadioButton(self.groupBox_3_plot2)
         self.radioButton_year_2.setGeometry(QtCore.QRect(130, 160, 61, 23))
         self.radioButton_year_2.setObjectName("radioButton_year_2")
+        self.radioButton_year_2.setChecked(True)
         self.plot2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
-        self.plot2.setGeometry(QtCore.QRect(40, 200, 101, 41))
+        self.plot2.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot2.setObjectName("plot2")
+
+        self.export_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.export_2.setGeometry(QtCore.QRect(110, 200, 81, 41))
+        self.export_2.setObjectName("export_2")
 
         self.label_3 = QtWidgets.QLabel(self.groupBox_3_plot2)
         self.label_3.setGeometry(QtCore.QRect(10, 40, 121, 17))
@@ -699,7 +670,7 @@ class Ui_MainWindow(object):
         self.tabWidget.addTab(self.tab_2, "")
 
         ######
-        ## events managing
+        ## events
         # get camera name and plot - 1
         self.plot1.clicked.connect(self.display_plotting_figure_1)
         self.button_camera_name_1.clicked.connect(self.get_camera_name_1)
@@ -715,11 +686,16 @@ class Ui_MainWindow(object):
         # start video
         self.start.clicked.connect(self.video)
         # stop video
-        self.stop.clicked.connect(close_window)
+        self.stop.clicked.connect(self.stop_process)
+        # self.stop.clicked.connect(close_window)
         # draw region
         self.draw_region.clicked.connect(self.region)
         # draw counting line
         self.draw_count.clicked.connect(self.counting)
+        # export data - 2
+        self.export_2.clicked.connect(self.call_export_data_2)
+        # export data - 1
+        self.export_1.clicked.connect(self.call_export_data_1)
         #####
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -812,42 +788,49 @@ class Ui_MainWindow(object):
 
     def display_plotting_figure_1(self):
         global camera_name_input_1
-        check_day_1 = 0
-        check_month_1 = 0
-        check_year_1 = 0
-
-        day_input_1 = self.input_day_1.text()
-        month_input_1 = self.input_month_1.text()
-        year_input_1 = self.input_year_1.text()
-        if self.radioButton_day_1.isChecked():
-            check_day_1 = 1
-            check_month_1 = 0
-            check_year_1 = 0
-        elif self.radioButton_month_1.isChecked():
-            check_day_1 = 0
-            check_month_1 = 1
-            check_year_1 = 0
-        elif self.radioButton_year_1.isChecked():
+        if len(camera_name_input_1) == 0:
+            check_camera_name_plotting()
+        else:
             check_day_1 = 0
             check_month_1 = 0
             check_year_1 = 1
+            name1 = "figure1.png"
+            color1 = "red"
 
-        plotting_1(camera_name_input_1,
-                   day_input_1,
-                   month_input_1,
-                   year_input_1,
-                   check_day_1,
-                   check_month_1,
-                   check_year_1)
+            day_input_1 = self.input_day_1.text()
+            month_input_1 = self.input_month_1.text()
+            year_input_1 = self.input_year_1.text()
+            if self.radioButton_day_1.isChecked():
+                check_day_1 = 1
+                check_month_1 = 0
+                check_year_1 = 0
+            elif self.radioButton_month_1.isChecked():
+                check_day_1 = 0
+                check_month_1 = 1
+                check_year_1 = 0
+            elif self.radioButton_year_1.isChecked():
+                check_day_1 = 0
+                check_month_1 = 0
+                check_year_1 = 1
 
-        self.display_ploting_1.clear()
-        if len(camera_name_input_1) == 0:
-            print("None")
-        else:
-            self.display_ploting_1.setScaledContents(True)
-            pixmap = QtGui.QPixmap('./figure/figure1.png')
-            # os.remove('./figure/figure1.png')
-            self.display_ploting_1.setPixmap(pixmap)
+            plotting(name1,
+                     color1,
+                     camera_name_input_1,
+                     day_input_1,
+                     month_input_1,
+                     year_input_1,
+                     check_day_1,
+                     check_month_1,
+                     check_year_1)
+
+            self.display_ploting_1.clear()
+            if len(camera_name_input_1) == 0:
+                print("None")
+            else:
+                self.display_ploting_1.setScaledContents(True)
+                pixmap = QtGui.QPixmap("./figure/" + name1)
+                # os.remove('./figure/figure1.png')
+                self.display_ploting_1.setPixmap(pixmap)
 
     def get_camera_name_2(self):
         global camera_name_input_2
@@ -855,42 +838,131 @@ class Ui_MainWindow(object):
 
     def display_plotting_figure_2(self):
         global camera_name_input_2
-        check_day_2 = 0
-        check_month_2 = 0
-        check_year_2 = 0
-
-        day_input_2 = self.input_day_2.text()
-        month_input_2 = self.input_month_2.text()
-        year_input_2 = self.input_year_2.text()
-        if self.radioButton_day_2.isChecked():
-            check_day_2 = 1
-            check_month_2 = 0
-            check_year_2 = 0
-        elif self.radioButton_month_2.isChecked():
+        if len(camera_name_input_2) == 0:
+            check_camera_name_plotting()
+        else:
             check_day_2 = 0
-            check_month_2 = 1
-            check_year_2 = 0
-        elif self.radioButton_year_1.isChecked():
+            check_month_2 = 0
+            check_year_2 = 1
+            name2 = "figure2.png"
+            color2 = "purple"
+
+            day_input_2 = self.input_day_2.text()
+            month_input_2 = self.input_month_2.text()
+            year_input_2 = self.input_year_2.text()
+            if self.radioButton_day_2.isChecked():
+                check_day_2 = 1
+                check_month_2 = 0
+                check_year_2 = 0
+            elif self.radioButton_month_2.isChecked():
+                check_day_2 = 0
+                check_month_2 = 1
+                check_year_2 = 0
+            elif self.radioButton_year_1.isChecked():
+                check_day_2 = 0
+                check_month_2 = 0
+                check_year_2 = 1
+
+            plotting(name2,
+                     color2,
+                     camera_name_input_2,
+                     day_input_2,
+                     month_input_2,
+                     year_input_2,
+                     check_day_2,
+                     check_month_2,
+                     check_year_2)
+
+            self.display_ploting_2.clear()
+            if len(camera_name_input_2) == 0:
+                print("None")
+            else:
+                self.display_ploting_2.setScaledContents(True)
+                pixmap = QtGui.QPixmap("./figure/" + name2)
+                # os.remove('./figure/figure2.png')
+                self.display_ploting_2.setPixmap(pixmap)
+
+    def stop_process(self):
+        # self.display_video.clear()
+        # self.display_video.setText("The process has been stopped")
+        # font_stop = QtGui.QFont()
+        # font_stop.setPointSize(30)
+        # self.display_video.setFont(font_stop)
+        self.display_video.clear()
+        self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
+        close_window()
+        # self.display_video.clear()
+        # self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
+        # self.display_video.setText("The process has been stopped")
+        # font_stop = QtGui.QFont()
+        # font_stop.setPointSize(30)
+        # self.display_video.setFont(font_stop)
+
+    def call_export_data_1(self):
+        global camera_name_input_1
+        if len(camera_name_input_1) == 0:
+            check_camera_name_plotting()
+        else:
+            check_day_1 = 0
+            check_month_1 = 0
+            check_year_1 = 1
+
+            day_input_1 = self.input_day_1.text()
+            month_input_1 = self.input_month_1.text()
+            year_input_1 = self.input_year_1.text()
+            if self.radioButton_day_1.isChecked():
+                check_day_1 = 1
+                check_month_1 = 0
+                check_year_1 = 0
+            elif self.radioButton_month_1.isChecked():
+                check_day_1 = 0
+                check_month_1 = 1
+                check_year_1 = 0
+            elif self.radioButton_year_1.isChecked():
+                check_day_1 = 0
+                check_month_1 = 0
+                check_year_1 = 1
+
+            export_data(camera_name_input_1,
+                        day_input_1,
+                        month_input_1,
+                        year_input_1,
+                        check_day_1,
+                        check_month_1,
+                        check_year_1)
+
+    def call_export_data_2(self):
+        global camera_name_input_2
+        if len(camera_name_input_2) == 0:
+            check_camera_name_plotting()
+        else:
             check_day_2 = 0
             check_month_2 = 0
             check_year_2 = 1
 
-        plotting_2(camera_name_input_2,
-                   day_input_2,
-                   month_input_2,
-                   year_input_2,
-                   check_day_2,
-                   check_month_2,
-                   check_year_2)
+            day_input_2 = self.input_day_2.text()
+            month_input_2 = self.input_month_2.text()
+            year_input_2 = self.input_year_2.text()
+            if self.radioButton_day_2.isChecked():
+                check_day_2 = 1
+                check_month_2 = 0
+                check_year_2 = 0
+            elif self.radioButton_month_2.isChecked():
+                check_day_2 = 0
+                check_month_2 = 1
+                check_year_2 = 0
+            elif self.radioButton_year_1.isChecked():
+                check_day_2 = 0
+                check_month_2 = 0
+                check_year_2 = 1
 
-        self.display_ploting_2.clear()
-        if len(camera_name_input_2) == 0:
-            print("None")
-        else:
-            self.display_ploting_2.setScaledContents(True)
-            pixmap = QtGui.QPixmap('./figure/figure2.png')
-            # os.remove('./figure/figure2.png')
-            self.display_ploting_2.setPixmap(pixmap)
+            export_data(camera_name_input_2,
+                       day_input_2,
+                       month_input_2,
+                       year_input_2,
+                       check_day_2,
+                       check_month_2,
+                       check_year_2)
 
 
     def retranslateUi(self, MainWindow):
@@ -939,6 +1011,8 @@ class Ui_MainWindow(object):
         self.label_3.setText(_translate("MainWindow", "Name of camera"))
         self.button_camera_name_2.setText(_translate("MainWindow", "OK"))
         self.display_ploting_2.setText(_translate("MainWindow", "Ploting_2"))
+        self.export_1.setText(_translate("MainWindow", "EXPORT 1"))
+        self.export_2.setText(_translate("MainWindow", "EXPORT 2"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("MainWindow", "Tab 2"))
         self.menuMain.setTitle(_translate("MainWindow", "Main"))
 

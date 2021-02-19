@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import datetime
 import os
 import shutil
+import sqlite3
+from pandas import DataFrame
 
 # read data from csv file
 # data = pd.read_csv('data.csv')
@@ -46,4 +48,16 @@ import shutil
 # print(even_month)
 # old_month = [i for i in range(2, 13, 2)]
 # print(old_month)
+camera_name_input = "A"
+year_input = 2020
 
+conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+c = conn.cursor()
+
+query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+                f"and Year = {year_input}"
+c.execute(query)
+return_data = c.fetchall()
+df = DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
+df.to_csv('./export_data/export_data_example.csv')
+print(df)
