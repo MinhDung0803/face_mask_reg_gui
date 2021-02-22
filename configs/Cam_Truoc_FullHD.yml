@@ -1,0 +1,18 @@
+version: 1.0
+
+input:
+  cam_config: "/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/configs/Camera_Truoc_FullHD.json"
+
+output:
+  save_videos_folder: /media/gg-ai-team/DATA/Face_Recogniton_In_Out/Out/Videos
+  save_faces_folder: /media/gg-ai-team/DATA/Face_Recogniton_In_Out/Out/Faces
+  save_data_folder: /media/gg-ai-team/DATA/Face_Recogniton_In_Out/Out/Data
+  time_block_video: 10000
+
+view_window:
+  width: 1920
+  height: 1080
+  grid_row: 1
+  grid_col: 1
+
+

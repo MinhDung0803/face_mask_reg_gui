@@ -1,0 +1,30 @@
+{
+  "data": [
+    { "id": "1",
+      "url": "/TaiNH/videos/GG/camera_truoc_fullHD.mp4",
+      "frame_drop": 1,
+      "frame_step": 1,
+      "tracking_scale": 0.5,
+      "ROIs": [
+        {
+          "caption" : "ROI-1",
+          "box": [0, 0, 1920, 1080],
+          "show_point": [50, 150]
+        }
+      ],
+      "tracking_regions": [
+        {
+          "id" : "Tracking-1",
+          "points": [0, 0, 1920, 0, 1920, 1080, 0, 1080],
+          "id_show_point": [965, 644],
+          "trap_lines": {
+            "unlimited_counts": [
+              {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
+              {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
