@@ -4,7 +4,6 @@ import datetime
 import os
 import shutil
 import sqlite3
-from pandas import DataFrame
 
 # read data from csv file
 # data = pd.read_csv('data.csv')
@@ -48,16 +47,34 @@ from pandas import DataFrame
 # print(even_month)
 # old_month = [i for i in range(2, 13, 2)]
 # print(old_month)
-camera_name_input = "A"
-year_input = 2020
+# camera_name_input = "A"
+# year_input = 2020
+#
+# conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+# c = conn.cursor()
+#
+# query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
+#                 f"and Year = {year_input}"
+# c.execute(query)
+# return_data = c.fetchall()
+# df = DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
+# df.to_csv('./export_data/export_data_example.csv')
+# print(df)
 
-conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
-c = conn.cursor()
+# import sys
+# sys.path.append(("/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/face_mask_detection.py"))
+# import detection_module
 
-query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
-                f"and Year = {year_input}"
-c.execute(query)
-return_data = c.fetchall()
-df = DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
-df.to_csv('./export_data/export_data_example.csv')
-print(df)
+# os.system("python face_mask_detection.py ./configs/Cam_PTZ.yml")
+
+import json
+import yaml
+
+
+json_file = '/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/Camera_PTZ.json'
+f = open(json_file)
+json_data = json.load(f)
+f.close()
+data = json_data["data"]
+
+print(data)

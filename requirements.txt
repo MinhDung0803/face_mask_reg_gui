@@ -1,8 +1,6 @@
-opencv-python==4.2.0.34
 pysqlite3
 datetime
 matplotlib
-pandas
 flask 
 flask_mongoengine
 flask_wtf
@@ -20,6 +18,7 @@ redis
 minio==6.0.0
 Pillow
 numpy==1.19.0
+opencv-python==4.2.0.34
 tqdm==4.47.0
 mongoengine==0.21
 Cython==0.29.20
@@ -29,6 +28,7 @@ greenlab-library
 gdown
 kthread
 PyYAML
+pandas
 openpyxl
 xlsxwriter
 pymilvus
