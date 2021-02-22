@@ -13,6 +13,8 @@ import time
 import os
 import cv2
 import pandas as pd
+import warnings
+warnings.filterwarnings("ignore")
 
 # all global variables
 global th, \
@@ -231,9 +233,9 @@ def draw_region():
     ret, frame = cap.read()
     frame = cv2.resize(frame, (width, height))
     if ret:
-        cv2.imwrite("original_image.jpg", frame)
+        cv2.imwrite("./draw/original_image.jpg", frame)
         # draw on original image and write when done
-        image = cv2.imread("original_image.jpg")
+        image = cv2.imread("./draw/original_image.jpg")
         clone = image.copy()
         cv2.namedWindow("Draw ROI")
         cv2.setMouseCallback("Draw ROI", shape_selection_for_region)
@@ -245,7 +247,7 @@ def draw_region():
                 draw_region_points = []
             elif key == 13:
                 break
-    cv2.imwrite('draw_region_image.jpg', image)
+    cv2.imwrite('./draw/draw_region_image.jpg', image)
     cap.release()
     cv2.destroyAllWindows()
 
@@ -253,7 +255,7 @@ def draw_region():
 def draw_counting():
     global path, width, height, draw_counting_points, image, draw_count_flag
     draw_count_flag = True
-    image = cv2.imread("draw_region_image.jpg")
+    image = cv2.imread("./draw/draw_region_image.jpg")
     clone = image.copy()
     cv2.namedWindow("Draw Counting Region")
     cv2.setMouseCallback("Draw Counting Region", shape_selection_for_counting)
@@ -265,7 +267,7 @@ def draw_counting():
             draw_counting_points = []
         elif key == 13:
             break
-    cv2.imwrite('draw_counting_image.jpg', image)
+    cv2.imwrite('./draw/draw_counting_image.jpg', image)
     cv2.destroyAllWindows()
 
 
@@ -512,17 +514,20 @@ class Ui_MainWindow(object):
         self.groupBox_4.setGeometry(QtCore.QRect(660, 180, 221, 91))
         self.groupBox_4.setObjectName("groupBox_4")
         self.label = QtWidgets.QLabel(self.groupBox_4)
-        self.label.setGeometry(QtCore.QRect(10, 40, 41, 17))
+        self.label.setGeometry(QtCore.QRect(10, 30, 41, 17))
         self.label.setObjectName("label")
         self.from_time = QtWidgets.QTimeEdit(self.groupBox_4)
-        self.from_time.setGeometry(QtCore.QRect(50, 40, 61, 26))
+        self.from_time.setGeometry(QtCore.QRect(50, 30, 61, 26))
         self.from_time.setObjectName("from_time")
         self.label_4 = QtWidgets.QLabel(self.groupBox_4)
-        self.label_4.setGeometry(QtCore.QRect(120, 40, 21, 17))
+        self.label_4.setGeometry(QtCore.QRect(120, 30, 21, 17))
         self.label_4.setObjectName("label_4")
         self.to_time = QtWidgets.QTimeEdit(self.groupBox_4)
-        self.to_time.setGeometry(QtCore.QRect(150, 40, 61, 26))
+        self.to_time.setGeometry(QtCore.QRect(150, 30, 61, 26))
         self.to_time.setObjectName("to_time")
+        self.pushButton_set_time = QtWidgets.QPushButton(self.groupBox_4)
+        self.pushButton_set_time.setGeometry(QtCore.QRect(70, 60, 89, 25))
+        self.pushButton_set_time.setObjectName("pushButton_set_time")
 
         self.groupBox_5 = QtWidgets.QGroupBox(self.tab)
         self.groupBox_5.setGeometry(QtCore.QRect(660, 280, 221, 151))
@@ -530,7 +535,8 @@ class Ui_MainWindow(object):
         self.display_no_face_mask_counting = QtWidgets.QLabel(self.groupBox_5)
         self.display_no_face_mask_counting.setGeometry(QtCore.QRect(20, 30, 181, 101))
         font = QtGui.QFont()
-        font.setPointSize(20)
+        font.setBold(True)
+        font.setPointSize(25)
         self.display_no_face_mask_counting.setFont(font)
         self.display_no_face_mask_counting.setFrameShape(QtWidgets.QFrame.Box)
         self.display_no_face_mask_counting.setLineWidth(5)
@@ -686,8 +692,7 @@ class Ui_MainWindow(object):
         # start video
         self.start.clicked.connect(self.video)
         # stop video
-        self.stop.clicked.connect(self.stop_process)
-        # self.stop.clicked.connect(close_window)
+        self.stop.clicked.connect(close_window)
         # draw region
         self.draw_region.clicked.connect(self.region)
         # draw counting line
@@ -882,22 +887,6 @@ class Ui_MainWindow(object):
                 # os.remove('./figure/figure2.png')
                 self.display_ploting_2.setPixmap(pixmap)
 
-    def stop_process(self):
-        # self.display_video.clear()
-        # self.display_video.setText("The process has been stopped")
-        # font_stop = QtGui.QFont()
-        # font_stop.setPointSize(30)
-        # self.display_video.setFont(font_stop)
-        self.display_video.clear()
-        self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
-        close_window()
-        # self.display_video.clear()
-        # self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
-        # self.display_video.setText("The process has been stopped")
-        # font_stop = QtGui.QFont()
-        # font_stop.setPointSize(30)
-        # self.display_video.setFont(font_stop)
-
     def call_export_data_1(self):
         global camera_name_input_1
         if len(camera_name_input_1) == 0:
@@ -980,6 +969,7 @@ class Ui_MainWindow(object):
         self.radioButton_sound_option.setText(_translate("MainWindow", "Sound"))
         self.radioButton_light_and_sound_option.setText(_translate("MainWindow", "Light and Sound"))
         self.groupBox_4.setTitle(_translate("MainWindow", "Setting Time"))
+        self.pushButton_set_time.setText(_translate("MainWindow", "SET TIME"))
         self.label.setText(_translate("MainWindow", "From"))
         self.label_4.setText(_translate("MainWindow", "To"))
         self.groupBox_5.setTitle(_translate("MainWindow", "No Face Mask Counting"))

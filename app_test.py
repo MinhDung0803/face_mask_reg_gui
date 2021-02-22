@@ -13,6 +13,8 @@ import time
 import os
 import cv2
 import pandas as pd
+import warnings
+warnings.filterwarnings("ignore")
 
 # all global variables
 global th, \
@@ -231,9 +233,9 @@ def draw_region():
     ret, frame = cap.read()
     frame = cv2.resize(frame, (width, height))
     if ret:
-        cv2.imwrite("original_image.jpg", frame)
+        cv2.imwrite("./draw/original_image.jpg", frame)
         # draw on original image and write when done
-        image = cv2.imread("original_image.jpg")
+        image = cv2.imread("./draw/original_image.jpg")
         clone = image.copy()
         cv2.namedWindow("Draw ROI")
         cv2.setMouseCallback("Draw ROI", shape_selection_for_region)
@@ -245,7 +247,7 @@ def draw_region():
                 draw_region_points = []
             elif key == 13:
                 break
-    cv2.imwrite('draw_region_image.jpg', image)
+    cv2.imwrite('./draw/draw_region_image.jpg', image)
     cap.release()
     cv2.destroyAllWindows()
 
@@ -253,7 +255,7 @@ def draw_region():
 def draw_counting():
     global path, width, height, draw_counting_points, image, draw_count_flag
     draw_count_flag = True
-    image = cv2.imread("draw_region_image.jpg")
+    image = cv2.imread("./draw/draw_region_image.jpg")
     clone = image.copy()
     cv2.namedWindow("Draw Counting Region")
     cv2.setMouseCallback("Draw Counting Region", shape_selection_for_counting)
@@ -265,7 +267,7 @@ def draw_counting():
             draw_counting_points = []
         elif key == 13:
             break
-    cv2.imwrite('draw_counting_image.jpg', image)
+    cv2.imwrite('./draw/draw_counting_image.jpg', image)
     cv2.destroyAllWindows()
 
 
@@ -690,8 +692,7 @@ class Ui_MainWindow(object):
         # start video
         self.start.clicked.connect(self.video)
         # stop video
-        self.stop.clicked.connect(self.stop_process)
-        # self.stop.clicked.connect(close_window)
+        self.stop.clicked.connect(close_window)
         # draw region
         self.draw_region.clicked.connect(self.region)
         # draw counting line
@@ -885,22 +886,6 @@ class Ui_MainWindow(object):
                 pixmap = QtGui.QPixmap("./figure/" + name2)
                 # os.remove('./figure/figure2.png')
                 self.display_ploting_2.setPixmap(pixmap)
-
-    def stop_process(self):
-        # self.display_video.clear()
-        # self.display_video.setText("The process has been stopped")
-        # font_stop = QtGui.QFont()
-        # font_stop.setPointSize(30)
-        # self.display_video.setFont(font_stop)
-        self.display_video.clear()
-        self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
-        close_window()
-        # self.display_video.clear()
-        # self.display_video.setPixmap(QtGui.QPixmap('./figure/figure2.png'))
-        # self.display_video.setText("The process has been stopped")
-        # font_stop = QtGui.QFont()
-        # font_stop.setPointSize(30)
-        # self.display_video.setFont(font_stop)
 
     def call_export_data_1(self):
         global camera_name_input_1
