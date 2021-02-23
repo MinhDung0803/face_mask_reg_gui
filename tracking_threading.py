@@ -311,11 +311,14 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
     print("(4)--- Stoped Tracking_threading")
 
 
-def tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scales, video_infor_list, list_list_region, list_trackted_buffer, no_job_sleep_time, event_queue, wait_stop):
+def tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scales, video_infor_list, list_list_region,
+                          list_trackted_buffer, no_job_sleep_time, event_queue, wait_stop):
     """
         full_delay_time is num of second to set sleep time
     """
 
-    t = threading.Thread(target=tracking, args=[list_detected_buffer, export_data_buffer, tracking_scales, video_infor_list, list_list_region, list_trackted_buffer, no_job_sleep_time, event_queue, wait_stop])
+    t = threading.Thread(target=tracking, args=[list_detected_buffer, export_data_buffer, tracking_scales,
+                                                video_infor_list, list_list_region, list_trackted_buffer,
+                                                no_job_sleep_time, event_queue, wait_stop])
     t.start()
 
