@@ -15,42 +15,8 @@ import time
 import os
 import cv2
 import pandas as pd
-import warnings
-
-warnings.filterwarnings("ignore")
-import yaml
-import json
 import threading
-import read_video_threading
-import detection_threading
-import tracking_threading
-import export_data_threading
-import face_mask_detection
-from mask_utils import global_variable_define as gd
 
-# all global variables
-global th, \
-    path, \
-    light_alarm, \
-    sound_alarm, \
-    both_alarm, \
-    count, \
-    height, \
-    width, \
-    draw_region_points, \
-    default_region_points, \
-    draw_region_flag, \
-    draw_count_flag, \
-    default_counting_points, \
-    draw_counting_points, \
-    w_width, \
-    w_height, \
-    conn, \
-    c, \
-    name, \
-    camera_name_input_1, \
-    camera_name_input_2, \
-    frame_out
 
 # variables
 path = None
@@ -66,7 +32,7 @@ light_alarm = 1
 sound_alarm = 0
 both_alarm = 0
 draw_region_points = []
-extra_pixels = 5  # for default points
+extra_pixels = 5  # for default regions
 default_region_points = [
     [(0 + extra_pixels, 0 + extra_pixels), (width - extra_pixels, 0 + extra_pixels)],
     [(width - extra_pixels, 0 + extra_pixels), (width - extra_pixels, height - extra_pixels)],
@@ -76,83 +42,20 @@ draw_region_flag = False
 draw_counting_points = []
 default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
+check_list = []
+
 # connect to sql database
 conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
 c = conn.cursor()
 
 
-# class Thread(QtCore.QThread):
-#     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
-#
-#     def __init__(self, parent):
-#         QtCore.QThread.__init__(self, parent)
-#         self._go = None
-#
-#     def run(self):
-#         global count, \
-#             height, \
-#             width, \
-#             draw_region_points, \
-#             default_region_points, \
-#             draw_region_flag, \
-#             default_counting_points, \
-#             draw_count_flag, \
-#             draw_counting_points
-#         cap = cv2.VideoCapture(path)
-#         self._go = True
-#         while self._go:
-#             ret, frame = cap.read()
-#             if ret:
-#                 frame = cv2.resize(frame, (width, height))
-#
-#                 # condition to draw region
-#                 if not draw_region_flag:
-#                     final_region_points = default_region_points
-#                 else:
-#                     final_region_points = draw_region_points
-#                 # draw region
-#                 for i, point in enumerate(final_region_points):
-#                     cv2.line(frame, point[0], point[1], (0, 0, 255), 2)
-#
-#                 # condition to draw counting region
-#                 if not draw_count_flag:
-#                     final_counting_points = default_counting_points
-#                 else:
-#                     final_counting_points = draw_counting_points
-#                 # draw counting region
-#                 for i, point in enumerate(final_counting_points):
-#                     cv2.line(frame, point[0], point[1], (0, 255, 255), 2)
-#
-#                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#                 h, w, ch = rgbImage.shape
-#                 bytesPerLine = ch * w
-#                 convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-#                 p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
-#                 self.changePixmap.emit(p)
-#             else:
-#                 check_input_frame()
-#                 time.sleep(0.5)
-#
-#     def stop_thread(self):
-#         global path, \
-#             draw_region_flag, \
-#             draw_count_flag, \
-#             draw_counting_points, \
-#             draw_region_points
-#         self._go = False
-#         path = None
-#         draw_region_flag = False
-#         draw_count_flag = False
-#         draw_counting_points = []
-#         draw_region_points = []
-
-
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, parent):
+    def __init__(self, parent, abc):
         QtCore.QThread.__init__(self, parent)
         self._go = None
+        self.abc = abc
 
     def run(self):
         global count, \
@@ -164,87 +67,41 @@ class Thread(QtCore.QThread):
             default_counting_points, \
             draw_count_flag, \
             draw_counting_points
+        cap = cv2.VideoCapture(path)
+        self._go = True
+        while self._go:
+            ret, frame = cap.read()
+            if ret:
+                frame = cv2.resize(frame, (width, height))
+                print("dung pm check status:", self.abc)
 
-        # begin combine
+                # condition to draw region
+                if not draw_region_flag:
+                    final_region_points = default_region_points
+                else:
+                    final_region_points = draw_region_points
+                # draw region
+                for i, point in enumerate(final_region_points):
+                    cv2.line(frame, point[0], point[1], (0, 0, 255), 2)
 
-        config_file = "./configs/Cam_PTZ.yml"
-        yaml.warnings({'YAMLLoadWarning': False})
-        with open(config_file, 'r') as fs:
-            config = yaml.load(fs)
+                # condition to draw counting region
+                if not draw_count_flag:
+                    final_counting_points = default_counting_points
+                else:
+                    final_counting_points = draw_counting_points
+                # draw counting region
+                for i, point in enumerate(final_counting_points):
+                    cv2.line(frame, point[0], point[1], (0, 255, 255), 2)
 
-        cam_config = config["input"]["cam_config"]
-        save_videos_folder = config["output"]["save_videos_folder"]
-        save_faces_folder = config["output"]["save_faces_folder"]
-        save_data_folder = config["output"]["save_data_folder"]
-        time_block_video = config["output"]["time_block_video"]
-
-        view_width = config["view_window"]["width"]
-        view_height = config["view_window"]["height"]
-        grid_row = config["view_window"]["grid_row"]
-        grid_col = config["view_window"]["grid_col"]
-
-        with open(cam_config) as json_file:
-            json_data = json.load(json_file)
-        json_file.close()
-
-        cam_infor_list = json_data["data"]
-
-        input_video_list, \
-        cam_id_list, \
-        frame_drop_list, \
-        frame_step_list, \
-        tracking_scale_list, \
-        regionboxs_list, \
-        tracking_regions_list = face_mask_detection.parser_cam_infor(cam_infor_list)
-
-        # video_time_list = [""] * len(cam_id_list)
-        # min_face_size_list = [10] * len(cam_id_list)
-
-        save_videos_folder_list = [os.path.join(save_videos_folder, id) for id in cam_id_list]
-        save_faces_folder_list = [os.path.join(save_faces_folder, id) for id in cam_id_list]
-        save_data_folder_list = [os.path.join(save_data_folder, id) for id in cam_id_list]
-
-        # # set globals
-        # gd.set_camera_id_list(cam_id_list)
-        # gd.set_video_time_list(video_time_list)
-        # print("*" * 80, ".....set_camera_id_list.....")
-        gd.make_dir_if_not_exist(save_videos_folder_list)
-        gd.make_dir_if_not_exist(save_faces_folder_list)
-        gd.make_dir_if_not_exist(save_data_folder_list)
-        gd.set_time_name_is_now()
-        #
-        time_save_videos_folder_list = gd.set_folder_save_video_face_data(save_videos_folder_list,
-                                                                          save_faces_folder_list,
-                                                                          save_data_folder_list)
-        #
-        # t1 = time.time()
-
-        face_mask_detection.reading_threading_test(input_video_list, time_save_videos_folder_list,
-                                                           time_block_video, frame_drop_list,frame_step_list,
-                                                           tracking_scale_list, regionboxs_list,
-                                                           tracking_regions_list, view_width, view_height,
-                                                           grid_row, grid_col)
-        # global frame_out
-        # frame = frame_out.copy()
-        # print("dungpm check: ", frame)
-        # # display result
-        # rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # h, w, ch = rgbImage.shape
-        # bytesPerLine = ch * w
-        # convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-        # p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
-        # self.changePixmap.emit(p)
-    # def run(self):
-    #     global frame_out
-    #     frame = frame_out.copy()
-    #     print("dungpm check: ", frame)
-    #     # display result
-    #     rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #     h, w, ch = rgbImage.shape
-    #     bytesPerLine = ch * w
-    #     convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-    #     p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
-    #     self.changePixmap.emit(p)
+                rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                h, w, ch = rgbImage.shape
+                bytesPerLine = ch * w
+                convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
+                p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
+                self.changePixmap.emit(p)
+            else:
+                check_input_frame()
+                time.sleep(0.5)
 
     def stop_thread(self):
         global path, \
@@ -258,12 +115,6 @@ class Thread(QtCore.QThread):
         draw_count_flag = False
         draw_counting_points = []
         draw_region_points = []
-
-def get_frame(frame_in):
-    global frame_out, width, height
-    frame_out = cv2.resize(frame_in, (width, height))
-    print("dungpm check: ", frame_out)
-
 
 
 def close_window():
@@ -348,14 +199,10 @@ def save(settings):
 
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
+    def setupUi(self, MainWindow, abc):
+        self.abc = abc
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(900, 694)
-
-        # define video thread
-        global th
-        th = Thread(MainWindow)
-
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
@@ -609,6 +456,9 @@ class Ui_MainWindow(object):
         self.start.clicked.connect(self.video)
         # stop video
         self.stop.clicked.connect(close_window)
+        # call display video
+        global th
+        th = Thread(MainWindow, self.abc)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -724,10 +574,11 @@ class Ui_MainWindow(object):
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, abc):
         global w_height, w_width
-        super().__init__(*args, **kwargs)
-        self.setupUi(self)
+        super().__init__()
+        self.abc = abc
+        self.setupUi(self, self.abc)
         self.setFixedSize(w_width, w_height)
         self.settings = QtCore.QSettings()
         # print(self.settings.fileName())
@@ -738,13 +589,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super().closeEvent(event)
 
 
-if __name__ == "__main__":
+def app(abc):
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
     QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
     QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
     QtCore.QCoreApplication.setApplicationName("MyApp")
-    w = MainWindow()
+    w = MainWindow(abc)
     w.show()
-    sys.exit(app.exec_())
+    app.exec_()
+    # sys.exit(app.exec_())
+
+
+def app_threading(abc):
+    t = threading.Thread(target=app,
+                         args=[abc])
+    t.start()
+
+
+# if __name__ == "__main__":
+#     abc = 123
+#     app(abc)
