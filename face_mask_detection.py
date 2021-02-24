@@ -7,6 +7,7 @@ import read_video_threading
 import detection_threading
 import tracking_threading
 import export_data_threading
+import visual_threading
 import app_test
 
 import cv2
@@ -22,6 +23,8 @@ from mask_utils import grid_view_video as gv_video
 
 import yaml
 import json
+import warnings
+warnings.filterwarnings("ignore")
 # from pathlib import Path
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,6 +35,7 @@ delay_time = 5
 videowrite_flag = False
 save_grid_image = True
 
+
 def get_info_video(fullfilename):
 
     video_capture = cv2.VideoCapture(fullfilename)
@@ -41,6 +45,7 @@ def get_info_video(fullfilename):
     video_capture.release() 
 
     return width, height, fps
+
 
 def counted_show(frame, w, h, list_count, font_face, font_scale, text_thickness, down_offset=0):
     h_margin = 50
@@ -74,6 +79,7 @@ def counted_show(frame, w, h, list_count, font_face, font_scale, text_thickness,
 
     return frame
 
+
 def read_transparent_png_and_scale(filename, frame_width, frame_height, percen_size):
     if not os.path.exists(filename):
         return None, None
@@ -102,6 +108,7 @@ def read_transparent_png_and_scale(filename, frame_width, frame_height, percen_s
 
     return rgb_channels, invert_alpha_channel
 
+
 def show_logo(frame, logo_info):
     logo_rgb_image, invert_alpha_channel = logo_info
     if (logo_rgb_image is None) or (invert_alpha_channel is None):
@@ -119,12 +126,14 @@ def show_logo(frame, logo_info):
     ROI_image[:, :, 1] = invert_alpha_channel * ROI_image[:, :, 1] + logo_rgb_image[:, :, 1]
     ROI_image[:, :, 2] = invert_alpha_channel * ROI_image[:, :, 2] + logo_rgb_image[:, :, 2]
 
+
 def is_closed_all(list_closed_cam):
     for closed in list_closed_cam:
         if closed == False:
             return False
     
     return True
+
 
 def region_scale(list_list_region, list_scale):
     num_cam = len(list_scale)
@@ -139,11 +148,13 @@ def change_fps(info_videos, frame_drop_list):
     for cam_index in range(len(info_videos)):
         info_videos[cam_index][2] /= frame_drop_list[cam_index]
 
+
 def add_time_and_count_into_file(time_save_videos_folder, saved_frame_count):
     # name, extend = os.path.splitext(filename)
     # return name + "_" + gd.TIME_NAME + "_" + str(file_count) + extend
 
     return os.path.join(time_save_videos_folder, str(saved_frame_count) + ".mp4")
+
 
 def VideoWriter_create(cam_index, time_save_videos_folder_list, info_videos, saved_frame_count):
 
@@ -155,6 +166,7 @@ def VideoWriter_create(cam_index, time_save_videos_folder_list, info_videos, sav
     # out1.set(cv2.VIDEOWRITER_PROP_QUALITY, 80)
 
     return out1, fps_video1
+
 
 def draw_caption(image, label, bbox, font_face, font_scale, bbox_color, text_color, text_thickness):
     x1, y1, x2, y2 = bbox
@@ -532,6 +544,371 @@ def reading_threading(input_video_list, time_save_videos_folder_list, time_block
         backward_message.put(["stop", "Stopped face recognition monitoring service"])
 
 
+def reading_threading_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list,
+                      detect_step_list, tracking_scale_list, regionboxs_list, tracking_regions_list,
+                      view_width, view_height, grid_row, grid_col, forward_message=None, backward_message=None):
+    # -----
+    # grid_view = gv_video.Grid_View("Camera Viewer", view_width, view_height, grid_row, grid_col, 2, (255, 0, 0),
+    #                                gd.camera_id_list, (0, 255, 0), direct_show=True)
+    # -----
+
+    global videowrite_flag
+    global save_grid_image
+    global min_face_size_list
+
+    if len(time_save_videos_folder_list) == 0:
+        videowrite_flag = False
+
+    num_cam = len(input_video_list)
+
+    logo_file = os.path.join(ROOT_DIR, "pictures/LogoTCX_small.png")
+    max_fps = 0
+    video_infor_list = []
+    logo_info_list = []
+
+    for cam_index in range(num_cam):
+        width1, height1, fps_video1 = get_info_video(input_video_list[cam_index])
+        video_infor_list.append([width1, height1, fps_video1])
+        if (max_fps < fps_video1): max_fps = fps_video1
+
+        # load logo
+        logo_rgb_image, invert_alpha_channel = read_transparent_png_and_scale(logo_file, width1, height1, 0.12)
+        logo_info_list.append([logo_rgb_image, invert_alpha_channel])
+
+    gd.set_video_infor_list(video_infor_list)
+
+    currentfile_saved_frame_count_list = [0] * num_cam
+    saved_frame_count_list = [0] * num_cam
+    saved_video_count_list = [0] * num_cam
+    num_of_frame_in_block_list = [0] * num_cam
+
+    out = []
+
+    change_fps(video_infor_list, frame_drop_list)
+
+    # -----
+    # if videowrite_flag:
+    #     for cam_index in range(num_cam):
+    #         out1, fps_video1 = VideoWriter_create(cam_index, time_save_videos_folder_list, video_infor_list,
+    #                                               saved_frame_count_list[cam_index])
+    #         num_of_frame_in_block_list[cam_index] = fps_video1 * time_block_video
+    #
+    #         out.append(out1)
+
+    # if save_grid_image:
+    #     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+    #     grid_size = grid_view.get_windows_size()
+    #     now_st = datetime.now().strftime("%d-%m-%Y_%H:%M:%S:%f")
+    #     grid_video_name = os.path.join("/media/gg-ai-team/DATA/out", now_st + ".mp4")
+    #     grid_videowriter = cv2.VideoWriter(grid_video_name, fourcc, video_infor_list[0][2], grid_size)
+    # -----
+
+    # regionboxs_list, tracking_regions_list = get_default_region(video_infor_list, margin=0)
+
+    list_frame_image_buffer = [queue.Queue(50) for i in range(num_cam)]
+    list_detected_buffer = [queue.Queue(50) for i in range(num_cam)]
+    list_trackted_buffer = [queue.Queue(50) for i in range(num_cam)]
+    list_visual_buffer = [queue.Queue(50) for i in range(num_cam)]
+    export_data_buffer = queue.Queue(100)  # unlimited
+
+    gd.set_ref_export_data_buffer(export_data_buffer)
+    gd.set_backward_message(backward_message)
+
+    event_queue1 = queue.Queue()
+    event_queue2 = queue.Queue()
+    event_queue3 = queue.Queue()
+    event_queue4 = queue.Queue()
+
+    wait_stop = threading.Barrier(5)
+    press_quit = False
+
+    region_scale(tracking_regions_list, tracking_scale_list)
+
+    no_job_sleep_time = 1 / max_fps
+
+    read_video_threading.read_video_by_threading(input_video_list, frame_drop_list, list_frame_image_buffer,
+                                                 no_job_sleep_time, event_queue1, wait_stop)
+
+    num_face_recognition_in_1step = [0]
+    detection_threading.detecting_by_threading(list_frame_image_buffer, detect_step_list, video_infor_list,
+                                               regionboxs_list, min_face_size_list, list_detected_buffer,
+                                               no_job_sleep_time, event_queue2, wait_stop)
+
+    tracking_threading.tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scale_list,
+                                             video_infor_list, tracking_regions_list, list_trackted_buffer,
+                                             no_job_sleep_time, event_queue3, wait_stop)
+
+    no_job_sleep_time_for_export_data = no_job_sleep_time
+    export_data_threading.export_data_by_threading(export_data_buffer, no_job_sleep_time_for_export_data, event_queue4,
+                                                   wait_stop)
+
+    visual_threading.visual_by_threading(input_video_list, list_trackted_buffer, tracking_scale_list, tracking_regions_list, list_visual_buffer,
+           no_job_sleep_time, event_queue4, wait_stop)
+
+    app_test.app(input_video_list, list_visual_buffer, tracking_scale_list)
+
+    trackregion_color = (0, 255, 255)
+    boxregion_color = (0, 255, 0)
+
+    sum_time = 0
+    count = 0
+
+    # list_winname = [ 'cam' + str(i) for i in range(num_cam)]
+
+    # print("-------------------------------------------------------------------------------------------------")
+    # print(list_winname)
+
+    list_closed_cam = [False] * num_cam
+
+    # Map_u = graphic_utils.cal_map_u(10)  # for fast interpolation s-pline
+    global delay_time
+    pausing = False
+
+    count_test = 0
+    sum_test = 0
+    while True:
+
+        time_start = time.time()
+        if (forward_message is not None) and (forward_message.empty() is False):
+            event_message = forward_message.get()
+            if event_message == "stop":
+                event_queue1.put("stop")
+                event_queue2.put("stop")
+                event_queue3.put("stop")
+                event_queue4.put("stop")
+
+                press_quit = True
+
+                break
+            elif event_message == "pause/unpause":
+                event_queue1.put("pause/unpause")
+                event_queue2.put("pause/unpause")
+                event_queue3.put("pause/unpause")
+                event_queue4.put("pause/unpause")
+                pausing = not pausing
+
+            elif event_message == "update-view":
+                event_queue4.put("update-view")
+
+        if (pausing):
+            time.sleep(no_job_sleep_time)
+            continue
+
+        have_input = False
+        for cam_index in range(num_cam):
+
+            trackted_buffer = list_trackted_buffer[cam_index]
+            if trackted_buffer.empty() == False:
+                data = trackted_buffer.get()
+
+                ind = data[0]
+                frame = data[1]
+                frame_ori = data[2]
+                list_count = data[3]
+
+                if (ind != -1):
+
+                    have_input = True
+
+                    save_frame_ori = frame_ori.copy()
+                    t1 = time.time()
+                    boxs_show = data[4]
+                    names_show = data[5]
+                    color_show = data[6]
+                    tails_show = data[7]
+
+                    # ------------------ draw infor -----------------------
+
+                    up_scale = 1 / tracking_scale_list[cam_index]
+
+                    bbox_thick = int(0.6 * (frame_ori.shape[0] + frame_ori.shape[1]) / 1000)
+                    if bbox_thick < 2:
+                        bbox_thick = 2
+                    font_face = cv2.FONT_HERSHEY_COMPLEX_SMALL
+                    font_scale = 0.75 * bbox_thick
+
+                    invert_scale = 1.0 / tracking_scale_list[cam_index]
+
+                    for bbox, name, color, tail in zip(boxs_show, names_show, color_show, tails_show):
+
+                        show_box = [int(bbox[0] * up_scale), int(bbox[1] * up_scale), int(bbox[2] * up_scale),
+                                    int(bbox[3] * up_scale)]
+
+                        cv2.rectangle(frame_ori, (show_box[0], show_box[1]), (show_box[2], show_box[3]), color,
+                                      bbox_thick)
+
+                        # box_size = str(int((bbox[2] - bbox[0]) * up_scale)) + 'x' + str(
+                        #     int((bbox[3] - bbox[1]) * up_scale))
+
+                        # draw_caption(frame_ori, name, show_box, font_face, font_scale, (0, 0, 255), (255, 255, 0),
+                        #              bbox_thick)
+
+                        Len = len(tail)
+                        if Len >= 4:
+                            # cv2.line(frame_ori,(int(tail[0]*scale), int(tail[1]*scale)), (int(tail[Len-2])*scale, int(tail[Len-1])*scale),color, 2)
+                            smooth_tail = graphic_utils.filter_tail(tail, 7)
+
+                            # spline_tail = graphic_utils.spline_interpolation_fast(smooth_tail, Map_u)
+
+                            spline_tail = smooth_tail
+
+                            tail_lines = []
+                            for i in range(0, len(spline_tail), 2):
+                                tail_lines.append([int(spline_tail[i] * up_scale), int(spline_tail[i + 1] * up_scale)])
+
+                            points = np.array(tail_lines)
+                            cv2.polylines(frame_ori, np.int32([points]), 0, color, bbox_thick, cv2.LINE_AA)
+
+                    for tracking_regions in tracking_regions_list[cam_index]:
+                        tracking_regions.draw_region(frame_ori, trackregion_color, bbox_thick, invert_scale, True, 1, 1)
+
+                    show_logo(frame_ori, logo_info_list[cam_index])
+                    frame_ori = counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count, font_face,
+                                             font_scale * 1.2, bbox_thick)
+
+                    # for regionbox in regionboxs_list[cam_index]:
+                    #     regionbox.draw_region(frame_ori, boxregion_color, boxregion_thickness, 1/detection_scale_list[cam_index])
+
+                    # for region in tracking_regions_list[cam_index]:
+                    #     region.draw_region(frame_ori, trackregion_color, trackregion_thickness, 1/tracking_scale_list[cam_index], True, 1, 0)
+
+                    # counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count)
+
+                    # ------------------ end draw infor -----------------------
+
+                    # Counted_list[cam_index] = list_count
+
+                    # -----
+                    # grid_view.set_cell_image(frame_ori, cam_index)
+                    # -----
+
+                    t2 = time.time()
+
+                    fps = (1. / (t2 - t1))
+                    # print(" Visualization speed = %f fps"%(fps))
+
+                    sum_time += (t2 - t1)
+                    count += 1
+
+                    if videowrite_flag:
+                        out[cam_index].write(save_frame_ori)
+                        saved_frame_count_list[cam_index] += 1
+                        currentfile_saved_frame_count_list[cam_index] += 1
+
+                        if (currentfile_saved_frame_count_list[cam_index] >= num_of_frame_in_block_list[cam_index]):
+                            out[cam_index].release()
+                            currentfile_saved_frame_count_list[cam_index] = 0
+                            saved_video_count_list[cam_index] += 1
+
+                            out1, fps_video1 = VideoWriter_create(cam_index, time_save_videos_folder_list,
+                                                                  video_infor_list,
+                                                                  saved_frame_count_list[cam_index])
+
+                            out[cam_index] = out1
+
+
+                else:
+
+                    list_closed_cam[cam_index] = True
+                    t4 = time.time()
+
+                    if videowrite_flag:
+                        if out[cam_index] is not None:
+                            out[cam_index].release()
+                            out[cam_index] = None
+
+                    # if (cam_index == 0):
+                    #     print(" Spend time 1: ", (t4-t3)/60, "min")
+
+                    break
+            else:
+
+                time.sleep(no_job_sleep_time)
+
+        time_end = time.time()
+
+        count_test += 1
+        sum_test += time_end - time_start
+
+        if (count_test % 30) == 0:
+            print("Spend time: ", time_end - time_start)
+            print("FPS: ", count_test / sum_test)
+        # -----
+        # if have_input:
+        #     char = grid_view.show(delay_time)
+        # else:
+        # -----
+        char = cv2.waitKeyEx(delay_time)
+
+        if (char & 0xFF00 == 0):  # normal keys press
+            # Press Q to stop!
+            if (char & 0xFF) in [ord('q'), ord('Q'), 27]:
+                # read_video_threading.
+                event_queue1.put("stop")
+                event_queue2.put("stop")
+                event_queue3.put("stop")
+                event_queue4.put("stop")
+                press_quit = True
+
+                break
+            elif (char & 0xFF) in [ord('p'), ord('P')]:
+                event_queue1.put("pause/unpause")
+                event_queue2.put("pause/unpause")
+                event_queue3.put("pause/unpause")
+                event_queue4.put("pause/unpause")
+
+                char = cv2.waitKey()
+
+                event_queue1.put("pause/unpause")
+                event_queue2.put("pause/unpause")
+                event_queue3.put("pause/unpause")
+                event_queue4.put("pause/unpause")
+
+            elif (char & 0xFF) in [ord('v'), ord('V')]:
+                event_queue4.put("update-view")
+
+        else:  # controller keys press
+            if (char & 0xFF) == 81:
+                delay_time = int(2 * delay_time)
+                if delay_time > 30000:
+                    delay_time = 30000
+
+            elif (char & 0xFF) == 83:
+                delay_time = int(0.5 * delay_time)
+                if (delay_time < 1):
+                    delay_time = 1
+
+        # -----
+        # if save_grid_image and have_input:
+        #     grid_videowriter.write(grid_view.get_capture_image())
+        # -----
+
+        if press_quit == True:
+            break
+
+        if is_closed_all(list_closed_cam):
+            break
+
+    if videowrite_flag:
+        for i in range(len(out)):
+            if (out[i] is not None):
+                out[i].release()
+
+    # -----
+    # grid_view.release()
+    #
+    # if save_grid_image:
+    #     grid_videowriter.release()
+    # -----
+
+    print(" Visualization speed Ave: ", count / (sum_time), "fps")
+
+    print('Visualization waiting for stop')
+    wait_stop.wait()
+    print('--------------------------------------------------------------------test stoped')
+    if backward_message is not None:
+        backward_message.put(["stop", "Stopped face recognition monitoring service"])
+
 def parser_cam_infor(cam_infor_list):
 
     input_video_list = []
@@ -570,6 +947,7 @@ def parser_cam_infor(cam_infor_list):
 
 
 def reading_test(config_file_in):
+    print("(7)--- Running Face Mask Detection Threading")
     global min_face_size_list
     config_file = config_file_in
     yaml.warnings({'YAMLLoadWarning': False})
@@ -622,7 +1000,7 @@ def reading_test(config_file_in):
     t1 = time.time()
 
 
-    reading_threading(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
+    reading_threading_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
         tracking_scale_list, regionboxs_list, tracking_regions_list, view_width, view_height, grid_row, grid_col)
 
 
@@ -708,7 +1086,7 @@ if __name__ == '__main__':
     t1 = time.time()
 
 
-    reading_threading(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
+    reading_threading_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
         tracking_scale_list, regionboxs_list, tracking_regions_list, view_width, view_height, grid_row, grid_col)
 
 

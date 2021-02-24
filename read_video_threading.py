@@ -130,7 +130,7 @@ def read_video(list_filename, list_num_framedrop, list_frame_image_buffer, no_jo
 
                         continue
 
-                    list_frame_image_buffer[cam_index].put([-1, frame_ori]) # index = -1 for Stoped, Frame is mmpty    
+                    list_frame_image_buffer[cam_index].put([-1, frame_ori]) # index = -1 for Stoped, Frame is empty
                     cap.release()
                     list_released_cam[cam_index] = True
 

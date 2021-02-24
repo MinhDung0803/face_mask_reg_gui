@@ -17,7 +17,6 @@ import cv2
 import pandas as pd
 import threading
 
-
 # variables
 path = None
 name = None
@@ -49,13 +48,84 @@ conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
 c = conn.cursor()
 
 
+# class Thread(QtCore.QThread):
+#     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
+#
+#     def __init__(self, parent, input_video_list, list_trackted_buffer):
+#         QtCore.QThread.__init__(self, parent)
+#         self._go = None
+#         self.input_video_list = input_video_list
+#         self.list_trackted_buffer = list_trackted_buffer
+#
+#     def run(self):
+#         global count, \
+#             height, \
+#             width, \
+#             draw_region_points, \
+#             default_region_points, \
+#             draw_region_flag, \
+#             default_counting_points, \
+#             draw_count_flag, \
+#             draw_counting_points
+#         cap = cv2.VideoCapture(path)
+#         self._go = True
+#         while self._go:
+#             ret, frame = cap.read()
+#             if ret:
+#                 frame = cv2.resize(frame, (width, height))
+#                 print("dung pm check status:", self.abc)
+#
+#                 # condition to draw region
+#                 if not draw_region_flag:
+#                     final_region_points = default_region_points
+#                 else:
+#                     final_region_points = draw_region_points
+#                 # draw region
+#                 for i, point in enumerate(final_region_points):
+#                     cv2.line(frame, point[0], point[1], (0, 0, 255), 2)
+#
+#                 # condition to draw counting region
+#                 if not draw_count_flag:
+#                     final_counting_points = default_counting_points
+#                 else:
+#                     final_counting_points = draw_counting_points
+#                 # draw counting region
+#                 for i, point in enumerate(final_counting_points):
+#                     cv2.line(frame, point[0], point[1], (0, 255, 255), 2)
+#
+#                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#                 h, w, ch = rgbImage.shape
+#                 bytesPerLine = ch * w
+#                 convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
+#                 p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
+#                 self.changePixmap.emit(p)
+#             else:
+#                 check_input_frame()
+#                 time.sleep(0.5)
+#
+#     def stop_thread(self):
+#         global path, \
+#             draw_region_flag, \
+#             draw_count_flag, \
+#             draw_counting_points, \
+#             draw_region_points
+#         self._go = False
+#         path = None
+#         draw_region_flag = False
+#         draw_count_flag = False
+#         draw_counting_points = []
+#         draw_region_points = []
+
+
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, parent, abc):
+    def __init__(self, parent, input_video_list, list_trackted_buffer, tracking_scale_list):
         QtCore.QThread.__init__(self, parent)
         self._go = None
-        self.abc = abc
+        self.input_video_list = input_video_list
+        self.list_trackted_buffer = list_trackted_buffer
+        self.tracking_scale_list = tracking_scale_list
 
     def run(self):
         global count, \
@@ -67,38 +137,27 @@ class Thread(QtCore.QThread):
             default_counting_points, \
             draw_count_flag, \
             draw_counting_points
-        cap = cv2.VideoCapture(path)
         self._go = True
-        while self._go:
-            ret, frame = cap.read()
-            if ret:
-                frame = cv2.resize(frame, (width, height))
-                print("dung pm check status:", self.abc)
+        while True:
+            if self._go == True:
+                num_cam = len(self.input_video_list)
+                for cam_index in range(num_cam):
 
-                # condition to draw region
-                if not draw_region_flag:
-                    final_region_points = default_region_points
-                else:
-                    final_region_points = draw_region_points
-                # draw region
-                for i, point in enumerate(final_region_points):
-                    cv2.line(frame, point[0], point[1], (0, 0, 255), 2)
+                    trackted_buffer = self.list_trackted_buffer[cam_index]
+                    if trackted_buffer.empty() == False:
+                        data = trackted_buffer.get()
 
-                # condition to draw counting region
-                if not draw_count_flag:
-                    final_counting_points = default_counting_points
-                else:
-                    final_counting_points = draw_counting_points
-                # draw counting region
-                for i, point in enumerate(final_counting_points):
-                    cv2.line(frame, point[0], point[1], (0, 255, 255), 2)
+                        ind = data[0]
+                        frame_ori = data[1]
 
-                rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                h, w, ch = rgbImage.shape
-                bytesPerLine = ch * w
-                convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-                p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
-                self.changePixmap.emit(p)
+                        if (ind != -1):
+                            result_frame =  cv2.resize(frame_ori, (width, height))
+                            rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+                            h, w, ch = rgbImage.shape
+                            bytesPerLine = ch * w
+                            convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
+                            p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
+                            self.changePixmap.emit(p)
             else:
                 check_input_frame()
                 time.sleep(0.5)
@@ -199,8 +258,10 @@ def save(settings):
 
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, abc):
-        self.abc = abc
+    def setupUi(self, MainWindow, input_video_list, list_trackted_buffer, tracking_scale_list):
+        self.input_video_list = input_video_list
+        self.list_trackted_buffer = list_trackted_buffer
+        self.tracking_scale_list = tracking_scale_list
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(900, 694)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -458,7 +519,7 @@ class Ui_MainWindow(object):
         self.stop.clicked.connect(close_window)
         # call display video
         global th
-        th = Thread(MainWindow, self.abc)
+        th = Thread(MainWindow, self.input_video_list, self.list_trackted_buffer, self.tracking_scale_list)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -574,11 +635,13 @@ class Ui_MainWindow(object):
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self, abc):
+    def __init__(self, input_video_list, list_trackted_buffer, tracking_scale_list):
         global w_height, w_width
         super().__init__()
-        self.abc = abc
-        self.setupUi(self, self.abc)
+        self.input_video_list = input_video_list
+        self.list_trackted_buffer = list_trackted_buffer
+        self.tracking_scale_list = tracking_scale_list
+        self.setupUi(self, self.input_video_list, self.list_trackted_buffer, self.tracking_scale_list)
         self.setFixedSize(w_width, w_height)
         self.settings = QtCore.QSettings()
         # print(self.settings.fileName())
@@ -589,24 +652,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super().closeEvent(event)
 
 
-def app(abc):
+def app(input_video_list, list_trackted_buffer, tracking_scale_list):
+    print("(6)--- Running APP")
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
     QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
     QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
     QtCore.QCoreApplication.setApplicationName("MyApp")
-    w = MainWindow(abc)
+    w = MainWindow(input_video_list, list_trackted_buffer, tracking_scale_list)
     w.show()
     app.exec_()
     # sys.exit(app.exec_())
 
 
-def app_threading(abc):
+def app_threading(input_video_list, list_trackted_buffer, tracking_scale_list):
     t = threading.Thread(target=app,
-                         args=[abc])
+                         args=[input_video_list, list_trackted_buffer, tracking_scale_list])
     t.start()
-
 
 # if __name__ == "__main__":
 #     abc = 123
