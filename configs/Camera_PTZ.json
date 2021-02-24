@@ -1,10 +1,10 @@
 {
   "data": [
     { "id": "1",
-      "url": "rtsp://admin:Admin123@192.168.111.211/1",
+      "url": "rtsp://admin:Admin123@192.168.111.210/1",
       "frame_drop": 1,
       "frame_step": 1,
-      "tracking_scale": 0.5,
+      "tracking_scale": 0.7,
       "ROIs": [
         {
           "caption" : "ROI-1",

@@ -378,7 +378,8 @@ def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
                 return
             elif (command == "pause/unpause"):
                 pausing = not pausing
-                if (pausing):   print("Tracking Threading is pausing")
+                if (pausing):
+                    print("Tracking Threading is pausing")
 
         if pausing:
             time.sleep(no_job_sleep_time)

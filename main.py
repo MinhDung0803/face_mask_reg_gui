@@ -1,16 +1,14 @@
-import app_test
 import face_mask_detection
 import sys
-import json
-import yaml
 import warnings
 warnings.filterwarnings("ignore")
 
+def run_main(config_file):
+
+    pass
+
 
 if __name__ == "__main__":
-    abc = 123
-    app_test.app_threading(abc)
-    print("xxxdsdsdsdsdsdsdsdsdddddddddddddddddddddddddddddddddddddddddddddddd")
 
     if len(sys.argv) < 2:
         print(
@@ -30,9 +28,7 @@ if __name__ == "__main__":
     print('\n\n-----------------------------------------------------------------------------------\n')
 
     config_file = sys.argv[1]
-
     face_mask_detection.reading_test_by_threading(config_file)
 
-    # print("xxxdsdsdsdsdsdsdsdsdddddddddddddddddddddddddddddddddddddddddddddddd")
     # abc = 123
     # app_test.app_threading(abc)
