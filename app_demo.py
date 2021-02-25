@@ -15,31 +15,15 @@ import cv2
 import pandas as pd
 import threading
 import queue
+import json
+import yaml
+
+import face_mask_threading
+from mask_utils import global_variable_define as gd
+
 import warnings
 warnings.filterwarnings("ignore")
 
-# all global variables
-global th, \
-    path, \
-    light_alarm, \
-    sound_alarm, \
-    both_alarm, \
-    count, \
-    height, \
-    width, \
-    draw_region_points, \
-    default_region_points, \
-    draw_region_flag, \
-    draw_count_flag, \
-    default_counting_points, \
-    draw_counting_points, \
-    w_width, \
-    w_height, \
-    conn, \
-    c, \
-    name, \
-    camera_name_input_1, \
-    camera_name_input_2
 
 # variables
 path = None
@@ -65,33 +49,15 @@ draw_region_flag = False
 draw_counting_points = []
 default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
+trigger_stop = 0
+
 # connect to sql database
 conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
 c = conn.cursor()
 
-def read(path, data_buffer):
-    global width, height
-    # path = "rtsp://admin:abcd1234@192.168.111.212/1"
+# config_file
+config_file = "./configs/Cam_PTZ.yml"
 
-    cap = cv2.VideoCapture(path)
-    while True:
-        ret, frame = cap.read()
-        if ret:
-            frame = cv2.resize(frame, (width, height))
-
-            data_buffer.put([1, frame])
-
-            cv2.imshow("check", frame)
-        k = cv2.waitKey(1)
-        if k == ord("q"):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-def read_threading(path, data_buffer):
-    t = threading.Thread(target=read, args=[path, data_buffer])
-    t.start()
 
 
 
@@ -111,25 +77,73 @@ class Thread(QtCore.QThread):
             draw_region_flag, \
             default_counting_points, \
             draw_count_flag, \
-            draw_counting_points
-
-        # create data_buffer
-        data_buffer = queue.Queue()
-        # call read_threading
-        read_threading(path, data_buffer)
+            draw_counting_points, \
+            config_file, \
+            trigger_stop, \
+            conn, \
+            c
         self._go = True
+        # get infor from config_file
+        yaml.warnings({'YAMLLoadWarning': False})
+        with open(config_file, 'r') as fs:
+            config = yaml.load(fs)
+            # config = yaml.load(fs, Loader=yaml.FullLoader)
+
+        cam_config = config["input"]["cam_config"]
+
+        with open(cam_config) as json_file:
+            json_data = json.load(json_file)
+        json_file.close()
+
+        cam_infor_list = json_data["data"]
+
+        input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
+        tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
+
+        num_cam = len(input_video_list)
+
+        # create face_mask buffer, forward_message and backward_message
+        face_mask_buffer = [queue.Queue(10) for i in range(num_cam)]
+
+        forward_message = queue.Queue()
+        backward_message = queue.Queue()
+
+        gd.set_backward_message(backward_message)
+
+        wait_stop = threading.Barrier(5)
+
+        # call face mask threading
+        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
+                                                   wait_stop)
+
         while self._go:
             if path is not None:
+                if trigger_stop == 1:
+                    forward_message.put("stop")
+                    trigger_stop = 0
+                    time.sleep(3)
+                    self.stop_thread()
 
-                data = data_buffer.get()
-                frame = data[1]
-                frame = cv2.resize(frame, (width, height))
-                rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                h, w, ch = rgbImage.shape
-                bytesPerLine = ch * w
-                convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-                p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
-                self.changePixmap.emit(p)
+                # print("DUNGPM--" * 100)
+                for cam_index in range(num_cam):
+
+                    face_mask_output_data = face_mask_buffer[cam_index]
+                    if face_mask_output_data.empty() == False:
+                        data = face_mask_output_data.get()
+
+                        ind = data[0]
+                        frame_ori = data[1]
+                        list_count = data[2]
+
+                        if (ind != -1):
+                            # result_frame = cv2.resize(frame_ori, (width, height))
+                            rgbImage = cv2.cvtColor(frame_ori, cv2.COLOR_BGR2RGB)
+                            h, w, ch = rgbImage.shape
+                            bytesPerLine = ch * w
+                            convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
+                            p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
+                            self.changePixmap.emit(p)
+
             else:
                 check_input_frame()
                 time.sleep(0.5)
@@ -140,18 +154,21 @@ class Thread(QtCore.QThread):
             draw_count_flag, \
             draw_counting_points, \
             draw_region_points
+
         self._go = False
-        path = None
+        # path = None
         draw_region_flag = False
         draw_count_flag = False
         draw_counting_points = []
         draw_region_points = []
+        # time.sleep(1)
+        # exit()
 
 
 def close_window():
-    th.stop_thread()
-    time.sleep(0.5)
-    # exit()
+    global trigger_stop
+    trigger_stop = 1
+    # th.stop_thread()
 
 
 def camera_source_alarm():
@@ -463,13 +480,9 @@ def export_data(camera_name_input,
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(900, 700)
 
-        # define video thread
-        global th
-        th = Thread(MainWindow)
 
+        ### design
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
@@ -506,7 +519,10 @@ class Ui_MainWindow(object):
         self.label_6 = QtWidgets.QLabel(self.groupBox)
         self.label_6.setGeometry(QtCore.QRect(20, 90, 41, 17))
         self.label_6.setObjectName("label_6")
+        font = QtGui.QFont()
+        font.setBold(True)
         self.apply = QtWidgets.QPushButton(self.groupBox)
+        self.apply.setFont(font)
         self.apply.setGeometry(QtCore.QRect(550, 30, 81, 81))
         self.apply.setObjectName("apply")
 
@@ -540,6 +556,7 @@ class Ui_MainWindow(object):
         self.to_time.setGeometry(QtCore.QRect(150, 30, 61, 26))
         self.to_time.setObjectName("to_time")
         self.pushButton_set_time = QtWidgets.QPushButton(self.groupBox_4)
+        self.pushButton_set_time.setFont(font)
         self.pushButton_set_time.setGeometry(QtCore.QRect(70, 60, 89, 25))
         self.pushButton_set_time.setObjectName("pushButton_set_time")
 
@@ -560,19 +577,25 @@ class Ui_MainWindow(object):
         self.display_no_face_mask_counting.setIndent(-1)
         self.display_no_face_mask_counting.setObjectName("display_no_face_mask_counting")
 
+        font = QtGui.QFont()
+        font.setBold(True)
         self.start = QtWidgets.QPushButton(self.tab)
+        self.start.setFont(font)
         self.start.setGeometry(QtCore.QRect(670, 450, 81, 71))
         self.start.setObjectName("start")
 
         self.draw_region = QtWidgets.QPushButton(self.tab)
+        self.draw_region.setFont(font)
         self.draw_region.setGeometry(QtCore.QRect(760, 450, 111, 71))
         self.draw_region.setObjectName("draw_region")
 
         self.stop = QtWidgets.QPushButton(self.tab)
+        self.stop.setFont(font)
         self.stop.setGeometry(QtCore.QRect(670, 540, 81, 71))
         self.stop.setObjectName("stop")
 
         self.draw_count = QtWidgets.QPushButton(self.tab)
+        self.draw_count.setFont(font)
         self.draw_count.setGeometry(QtCore.QRect(760, 540, 111, 71))
         self.draw_count.setObjectName("draw_count")
         self.tabWidget.addTab(self.tab, "")
@@ -616,10 +639,12 @@ class Ui_MainWindow(object):
         self.radioButton_year_1.setObjectName("radioButton_year_1")
         self.radioButton_year_1.setChecked(True)
         self.plot1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.plot1.setFont(font)
         self.plot1.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot1.setObjectName("plot1")
 
         self.export_1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.export_1.setFont(font)
         self.export_1.setGeometry(QtCore.QRect(110, 200, 81, 41))
         self.export_1.setObjectName("export_1")
 
@@ -630,6 +655,7 @@ class Ui_MainWindow(object):
         self.input_camera_name_1.setGeometry(QtCore.QRect(10, 60, 131, 25))
         self.input_camera_name_1.setObjectName("input_camera_name_1")
         self.button_camera_name_1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.button_camera_name_1.setFont(font)
         self.button_camera_name_1.setGeometry(QtCore.QRect(150, 54, 41, 31))
         self.button_camera_name_1.setObjectName("button_camera_name_1")
 
@@ -665,10 +691,12 @@ class Ui_MainWindow(object):
         self.radioButton_year_2.setObjectName("radioButton_year_2")
         self.radioButton_year_2.setChecked(True)
         self.plot2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.plot2.setFont(font)
         self.plot2.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot2.setObjectName("plot2")
 
         self.export_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.export_2.setFont(font)
         self.export_2.setGeometry(QtCore.QRect(110, 200, 81, 41))
         self.export_2.setObjectName("export_2")
 
@@ -679,6 +707,7 @@ class Ui_MainWindow(object):
         self.input_camera_name_2.setGeometry(QtCore.QRect(10, 60, 131, 25))
         self.input_camera_name_2.setObjectName("input_camera_name_2")
         self.button_camera_name_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.button_camera_name_2.setFont(font)
         self.button_camera_name_2.setGeometry(QtCore.QRect(150, 54, 41, 31))
         self.button_camera_name_2.setObjectName("button_camera_name_2")
 
@@ -715,6 +744,9 @@ class Ui_MainWindow(object):
         self.export_2.clicked.connect(self.call_export_data_2)
         # export data - 1
         self.export_1.clicked.connect(self.call_export_data_1)
+        # call display video
+        global th
+        th = Thread(MainWindow)
         #####
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -780,7 +812,7 @@ class Ui_MainWindow(object):
         self.display_video.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def get_path(self):
-        global path, name
+        global path, name, config_file
         data_path = self.source_path.text()
         camera_name_source = self.source_input_camera_name.text()
         # check for IP camera path
@@ -793,6 +825,22 @@ class Ui_MainWindow(object):
                 check_path_for_ip_camera()
             else:
                 path = data_path
+                # load yaml config file
+                yaml.warnings({'YAMLLoadWarning': False})
+                with open(config_file, 'r') as fs:
+                    config = yaml.load(fs)
+                    # config = yaml.load(fs, Loader=yaml.FullLoader)
+
+                cam_config = config["input"]["cam_config"]
+
+                with open(cam_config) as json_file:
+                    json_data = json.load(json_file)
+                json_file.close()
+                # update IP address for IP camera into Config JSOn file
+                json_data["data"][0]["url"] = path
+                with open(json_file.name, "w") as outfile:
+                    json.dump(json_data, outfile)
+
         # check for webcam ID
         if self.radioButton_webcam.isChecked():
             if len(data_path) > 10:
@@ -806,7 +854,7 @@ class Ui_MainWindow(object):
         camera_name_input_1 = self.input_camera_name_1.text()
 
     def display_plotting_figure_1(self):
-        global camera_name_input_1
+        global camera_name_input_1, conn, c
         if len(camera_name_input_1) == 0:
             check_camera_name_plotting()
         else:
@@ -856,7 +904,7 @@ class Ui_MainWindow(object):
         camera_name_input_2 = self.input_camera_name_2.text()
 
     def display_plotting_figure_2(self):
-        global camera_name_input_2
+        global camera_name_input_2, conn, c
         if len(camera_name_input_2) == 0:
             check_camera_name_plotting()
         else:
@@ -1022,13 +1070,12 @@ class Ui_MainWindow(object):
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         global w_height, w_width
-        super().__init__(*args, **kwargs)
+        super().__init__()
         self.setupUi(self)
         self.setFixedSize(w_width, w_height)
         self.settings = QtCore.QSettings()
-        # print(self.settings.fileName())
         restore(self.settings)
 
     def closeEvent(self, event):
@@ -1036,7 +1083,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super().closeEvent(event)
 
 
-if __name__ == "__main__":
+# def app():
+#     print("(***)--- Running APP threading")
+#     import sys
+#
+#     app = QtWidgets.QApplication(sys.argv)
+#     QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
+#     QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
+#     QtCore.QCoreApplication.setApplicationName("MyApp")
+#     w = MainWindow()
+#     w.show()
+#     app.exec_()
+#     # sys.exit(app.exec_())
+#
+#
+# def app_threading():
+#     t = threading.Thread(target=app, args=[])
+#     t.start()
+
+
+if __name__ == '__main__':
+    print("(***)--- Running APP threading")
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
@@ -1045,5 +1112,4 @@ if __name__ == "__main__":
     QtCore.QCoreApplication.setApplicationName("MyApp")
     w = MainWindow()
     w.show()
-    sys.exit(app.exec_())
-
+    app.exec_()

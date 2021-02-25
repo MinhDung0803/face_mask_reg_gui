@@ -16,28 +16,6 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-# all global variables
-global th, \
-    path, \
-    light_alarm, \
-    sound_alarm, \
-    both_alarm, \
-    count, \
-    height, \
-    width, \
-    draw_region_points, \
-    default_region_points, \
-    draw_region_flag, \
-    draw_count_flag, \
-    default_counting_points, \
-    draw_counting_points, \
-    w_width, \
-    w_height, \
-    conn, \
-    c, \
-    name, \
-    camera_name_input_1, \
-    camera_name_input_2
 
 # variables
 path = None
@@ -492,7 +470,10 @@ class Ui_MainWindow(object):
         self.label_6 = QtWidgets.QLabel(self.groupBox)
         self.label_6.setGeometry(QtCore.QRect(20, 90, 41, 17))
         self.label_6.setObjectName("label_6")
+        font = QtGui.QFont()
+        font.setBold(True)
         self.apply = QtWidgets.QPushButton(self.groupBox)
+        self.apply.setFont(font)
         self.apply.setGeometry(QtCore.QRect(550, 30, 81, 81))
         self.apply.setObjectName("apply")
 
@@ -526,6 +507,7 @@ class Ui_MainWindow(object):
         self.to_time.setGeometry(QtCore.QRect(150, 30, 61, 26))
         self.to_time.setObjectName("to_time")
         self.pushButton_set_time = QtWidgets.QPushButton(self.groupBox_4)
+        self.pushButton_set_time.setFont(font)
         self.pushButton_set_time.setGeometry(QtCore.QRect(70, 60, 89, 25))
         self.pushButton_set_time.setObjectName("pushButton_set_time")
 
@@ -546,19 +528,25 @@ class Ui_MainWindow(object):
         self.display_no_face_mask_counting.setIndent(-1)
         self.display_no_face_mask_counting.setObjectName("display_no_face_mask_counting")
 
+        font = QtGui.QFont()
+        font.setBold(True)
         self.start = QtWidgets.QPushButton(self.tab)
+        self.start.setFont(font)
         self.start.setGeometry(QtCore.QRect(670, 450, 81, 71))
         self.start.setObjectName("start")
 
         self.draw_region = QtWidgets.QPushButton(self.tab)
+        self.draw_region.setFont(font)
         self.draw_region.setGeometry(QtCore.QRect(760, 450, 111, 71))
         self.draw_region.setObjectName("draw_region")
 
         self.stop = QtWidgets.QPushButton(self.tab)
+        self.stop.setFont(font)
         self.stop.setGeometry(QtCore.QRect(670, 540, 81, 71))
         self.stop.setObjectName("stop")
 
         self.draw_count = QtWidgets.QPushButton(self.tab)
+        self.draw_count.setFont(font)
         self.draw_count.setGeometry(QtCore.QRect(760, 540, 111, 71))
         self.draw_count.setObjectName("draw_count")
         self.tabWidget.addTab(self.tab, "")
@@ -602,10 +590,12 @@ class Ui_MainWindow(object):
         self.radioButton_year_1.setObjectName("radioButton_year_1")
         self.radioButton_year_1.setChecked(True)
         self.plot1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.plot1.setFont(font)
         self.plot1.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot1.setObjectName("plot1")
 
         self.export_1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.export_1.setFont(font)
         self.export_1.setGeometry(QtCore.QRect(110, 200, 81, 41))
         self.export_1.setObjectName("export_1")
 
@@ -616,6 +606,7 @@ class Ui_MainWindow(object):
         self.input_camera_name_1.setGeometry(QtCore.QRect(10, 60, 131, 25))
         self.input_camera_name_1.setObjectName("input_camera_name_1")
         self.button_camera_name_1 = QtWidgets.QPushButton(self.groupBox_plot1)
+        self.button_camera_name_1.setFont(font)
         self.button_camera_name_1.setGeometry(QtCore.QRect(150, 54, 41, 31))
         self.button_camera_name_1.setObjectName("button_camera_name_1")
 
@@ -651,10 +642,12 @@ class Ui_MainWindow(object):
         self.radioButton_year_2.setObjectName("radioButton_year_2")
         self.radioButton_year_2.setChecked(True)
         self.plot2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.plot2.setFont(font)
         self.plot2.setGeometry(QtCore.QRect(10, 200, 81, 41))
         self.plot2.setObjectName("plot2")
 
         self.export_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.export_2.setFont(font)
         self.export_2.setGeometry(QtCore.QRect(110, 200, 81, 41))
         self.export_2.setObjectName("export_2")
 
@@ -665,6 +658,7 @@ class Ui_MainWindow(object):
         self.input_camera_name_2.setGeometry(QtCore.QRect(10, 60, 131, 25))
         self.input_camera_name_2.setObjectName("input_camera_name_2")
         self.button_camera_name_2 = QtWidgets.QPushButton(self.groupBox_3_plot2)
+        self.button_camera_name_2.setFont(font)
         self.button_camera_name_2.setGeometry(QtCore.QRect(150, 54, 41, 31))
         self.button_camera_name_2.setObjectName("button_camera_name_2")
 
@@ -701,6 +695,9 @@ class Ui_MainWindow(object):
         self.export_2.clicked.connect(self.call_export_data_2)
         # export data - 1
         self.export_1.clicked.connect(self.call_export_data_1)
+        # define video thread
+        global th
+        th = Thread(MainWindow)
         #####
 
         MainWindow.setCentralWidget(self.centralwidget)

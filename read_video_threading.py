@@ -68,6 +68,7 @@ def read_video(list_filename, list_num_framedrop, list_frame_image_buffer, no_jo
 
             if (command == "stop"):
                 release_all_video_capture(list_video_capture, list_released_cam)
+                print("Read_video_threading is waitting to stop")
                 wait_stop.wait()
                 print("(1)--- Stoped Read_video_threading")
                 return

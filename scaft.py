@@ -71,10 +71,18 @@ import json
 import yaml
 
 
-json_file = '/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/Camera_PTZ.json'
+json_file = 'Camera_PTZ.json'
 f = open(json_file)
 json_data = json.load(f)
 f.close()
 data = json_data["data"]
 
+data[0]["url"] = "a"
+
+with open(json_file, "w") as outfile:
+    json.dump(data, outfile)
+
 print(data)
+
+# print("A"*150)
+

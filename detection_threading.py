@@ -37,6 +37,8 @@ def num_frame_need_to_detect_in_1s(info_videos, list_step_frame):
 def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detection_list_list_region,
 							   min_face_size_list, list_detected_buffer, no_job_sleep_time, event_queue, wait_stop):
 
+	print("(2)--- Running Face_Recognition_search_threading")
+
 	num_frame_need_to_detect = num_frame_need_to_detect_in_1s(video_infor_list, detect_step_list)
 	sum_frame_processing = sum_fps(video_infor_list)
 	num_cam = len(list_frame_image_buffer)  # len(info_videos)
@@ -53,8 +55,9 @@ def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detec
 			command = event_queue.get()
 
 			if (command == "stop"):
+				print("Face_Recognition_search_threading is waitting to stop")
 				wait_stop.wait()
-				print("(3)--- Stoped Face_Recognition_search_threading")
+				print("(2)--- Stoped Face_Recognition_search_threading")
 				return
 			elif (command == "pause/unpause"):
 				pausing = not pausing
@@ -138,7 +141,7 @@ def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detec
 		elif (have_no_job):
 			time.sleep(no_job_sleep_time)
 
-	print("(3)--- Stoped Face_Recognition_search_threading")
+	print("(2)--- Stoped Face_Recognition_search_threading")
 
 
 def detecting_by_threading(list_frame_image_buffer, detect_step_list, video_infor_list, detection_list_list_region, \
