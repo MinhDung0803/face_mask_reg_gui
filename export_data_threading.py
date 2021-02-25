@@ -347,7 +347,7 @@ def write_body_to_file(item_list):
 
 
 def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
-    print("(5)--- Running export_data_threading")
+    print("(4)--- Running export_data_threading")
 
     if not face_detection_notify_flag:
         init()
@@ -405,7 +405,7 @@ def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
 
     wait_stop.wait()
 
-    print("(5)--- Stoped export_data_threading")
+    print("(4)--- Stoped export_data_threading")
 
 
 def export_data_by_threading(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):

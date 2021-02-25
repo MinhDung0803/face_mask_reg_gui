@@ -8,7 +8,7 @@ import detection_threading
 import tracking_threading
 import export_data_threading
 import visual_threading
-import app_test
+import app_demo
 
 import cv2
 import numpy as np
@@ -614,10 +614,11 @@ def reading_threading_dungpm(input_video_list, time_save_videos_folder_list, tim
     gd.set_ref_export_data_buffer(export_data_buffer)
     gd.set_backward_message(backward_message)
 
-    event_queue1 = queue.Queue()
-    event_queue2 = queue.Queue()
-    event_queue3 = queue.Queue()
-    event_queue4 = queue.Queue()
+    event_queue_read_video_threading = queue.Queue()
+    event_queue_detecting_threading = queue.Queue()
+    event_queue_tracking_threading = queue.Queue()
+    event_queue_export_data_threading = queue.Queue()
+    event_queue_visual_threading = queue.Queue()
 
     wait_stop = threading.Barrier(5)
     press_quit = False
@@ -627,25 +628,26 @@ def reading_threading_dungpm(input_video_list, time_save_videos_folder_list, tim
     no_job_sleep_time = 1 / max_fps
 
     read_video_threading.read_video_by_threading(input_video_list, frame_drop_list, list_frame_image_buffer,
-                                                 no_job_sleep_time, event_queue1, wait_stop)
+                                                 no_job_sleep_time, event_queue_read_video_threading, wait_stop)
 
     num_face_recognition_in_1step = [0]
     detection_threading.detecting_by_threading(list_frame_image_buffer, detect_step_list, video_infor_list,
                                                regionboxs_list, min_face_size_list, list_detected_buffer,
-                                               no_job_sleep_time, event_queue2, wait_stop)
+                                               no_job_sleep_time, event_queue_detecting_threading, wait_stop)
 
     tracking_threading.tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scale_list,
                                              video_infor_list, tracking_regions_list, list_trackted_buffer,
-                                             no_job_sleep_time, event_queue3, wait_stop)
+                                             no_job_sleep_time, event_queue_tracking_threading, wait_stop)
 
     no_job_sleep_time_for_export_data = no_job_sleep_time
-    export_data_threading.export_data_by_threading(export_data_buffer, no_job_sleep_time_for_export_data, event_queue4,
-                                                   wait_stop)
+    # export_data_threading.export_data_by_threading(export_data_buffer, no_job_sleep_time_for_export_data,
+    #                                                event_queue_export_data_threading, wait_stop)
 
-    visual_threading.visual_by_threading(input_video_list, list_trackted_buffer, tracking_scale_list, tracking_regions_list, list_visual_buffer,
-           no_job_sleep_time, event_queue4, wait_stop)
+    visual_threading.visual_by_threading(input_video_list, list_trackted_buffer, tracking_scale_list,
+                                         tracking_regions_list, list_visual_buffer,no_job_sleep_time,
+                                         event_queue_visual_threading, wait_stop)
 
-    app_test.app(input_video_list, list_visual_buffer, tracking_scale_list)
+    app_demo.app(input_video_list, list_visual_buffer, tracking_scale_list)
 
     trackregion_color = (0, 255, 255)
     boxregion_color = (0, 255, 0)
@@ -672,23 +674,25 @@ def reading_threading_dungpm(input_video_list, time_save_videos_folder_list, tim
         if (forward_message is not None) and (forward_message.empty() is False):
             event_message = forward_message.get()
             if event_message == "stop":
-                event_queue1.put("stop")
-                event_queue2.put("stop")
-                event_queue3.put("stop")
-                event_queue4.put("stop")
+                event_queue_read_video_threading.put("stop")
+                event_queue_detecting_threading.put("stop")
+                event_queue_tracking_threading.put("stop")
+                event_queue_export_data_threading.put("stop")
+                event_queue_visual_threading.put("stop")
 
                 press_quit = True
 
                 break
             elif event_message == "pause/unpause":
-                event_queue1.put("pause/unpause")
-                event_queue2.put("pause/unpause")
-                event_queue3.put("pause/unpause")
-                event_queue4.put("pause/unpause")
+                event_queue_read_video_threading.put("pause/unpause")
+                event_queue_detecting_threading.put("pause/unpause")
+                event_queue_tracking_threading.put("pause/unpause")
+                event_queue_export_data_threading.put("pause/unpause")
+                event_queue_visual_threading.put("pause/unpause")
                 pausing = not pausing
 
             elif event_message == "update-view":
-                event_queue4.put("update-view")
+                event_queue_export_data_threading.put("update-view")
 
         if (pausing):
             time.sleep(no_job_sleep_time)
@@ -1086,7 +1090,11 @@ if __name__ == '__main__':
     t1 = time.time()
 
 
-    reading_threading_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
+    # reading_threading_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
+    #     tracking_scale_list, regionboxs_list, tracking_regions_list, view_width, view_height, grid_row, grid_col)
+
+
+    reading_threading(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list, \
         tracking_scale_list, regionboxs_list, tracking_regions_list, view_width, view_height, grid_row, grid_col)
 
 

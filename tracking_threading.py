@@ -175,7 +175,7 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
     """
         full_delay_time is num of second to set sleep time
     """
-    print("(4)--- Running Tracking_threading")
+    print("(3)--- Running Tracking_threading")
 
     num_cam = len(list_detected_buffer)
     # list_closed_queue = [[False, False]] * num_cam # 2 queue list_detected_buffer and list_faceID_buffer is closed
@@ -209,7 +209,8 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
                 return
             elif (command == "pause/unpause"):
                 pausing = not pausing
-                if (pausing):   print("Tracking Threading is pausing")
+                if (pausing):
+                    print("Tracking Threading is pausing")
             elif (command == "update-view"):
                 update_view = not update_view
 
@@ -308,7 +309,7 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
         elif (have_no_job):
             time.sleep(no_job_sleep_time)
 
-    print("(4)--- Stoped Tracking_threading")
+    print("(3)--- Stoped Tracking_threading")
 
 
 def tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scales, video_infor_list, list_list_region,
