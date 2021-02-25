@@ -96,8 +96,8 @@ def get_valid_inside_and_fix_small_error(im_width, im_height, boxs_tlbr, percent
 def get_inside_regions_2(list_region, boxs_tlbr, infors_list=None):
     re_boxs = []
 
-    print("@" * 30, "boxs_tlbr (1) : ", boxs_tlbr)
-    print("@"*30, "infors_list (1) : ", infors_list)
+    print("@" * 5, "boxs_tlbr (1) : ", boxs_tlbr)
+    print("@"*5, "infors_list (1) : ", infors_list)
 
     if infors_list != None:
         len_infors_list = len(infors_list)
@@ -117,7 +117,7 @@ def get_inside_regions_2(list_region, boxs_tlbr, infors_list=None):
                 re_boxs.append(boxs_tlbr[i])
                 if len_infors_list > 0:
                     for j in range(len_infors_list):
-                        print("j = {}, i = {}".format(j, i))
+                        # print("j = {}, i = {}".format(j, i))
                         re_infors_list[j].append(infors_list[j][i])
 
     # print("@" * 30, "re_boxs (2) : ", re_boxs)

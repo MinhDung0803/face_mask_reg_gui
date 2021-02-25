@@ -67,22 +67,30 @@ import sqlite3
 
 # os.system("python face_mask_detection.py ./configs/Cam_PTZ.yml")
 
-import json
-import yaml
-
-
-json_file = 'Camera_PTZ.json'
-f = open(json_file)
-json_data = json.load(f)
-f.close()
-data = json_data["data"]
-
-data[0]["url"] = "a"
-
-with open(json_file, "w") as outfile:
-    json.dump(data, outfile)
-
-print(data)
+# import json
+# import yaml
+#
+#
+# json_file = 'Camera_PTZ.json'
+# f = open(json_file)
+# json_data = json.load(f)
+# f.close()
+# data = json_data["data"]
+#
+# data[0]["url"] = "a"
+#
+# with open(json_file, "w") as outfile:
+#     json.dump(data, outfile)
+#
+# print(data)
 
 # print("A"*150)
+
+# from playsound import playsound
+# playsound('./alarm/Cảnh sát âm thanh tiếng còi báo động.mp3')
+
+import os
+
+file = "police.mp3"
+os.system("./alarm/" + file)
 

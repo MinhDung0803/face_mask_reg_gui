@@ -128,8 +128,8 @@ class FastTrack:
         self.dic_mask_id = {}
         self.dic_mask_id[mask_id] = 1
 
-        print("@"*80)
-        print("track_id : ", track_id)
+        # print("@"*80)
+        print("Track_id : ", track_id)
 
     # ***********************************************************************************
     def get_ref_datetime(self, frame_index):

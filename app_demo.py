@@ -64,9 +64,10 @@ config_file = "./configs/Cam_PTZ.yml"
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, parent):
+    def __init__(self, parent, display_no_face_mask_counting):
         QtCore.QThread.__init__(self, parent)
         self._go = None
+        self.display_no_face_mask_counting = display_no_face_mask_counting
 
     def run(self):
         global count, \
@@ -81,8 +82,10 @@ class Thread(QtCore.QThread):
             config_file, \
             trigger_stop, \
             conn, \
-            c
+            c, \
+            count
         self._go = True
+
         # get infor from config_file
         yaml.warnings({'YAMLLoadWarning': False})
         with open(config_file, 'r') as fs:
@@ -101,9 +104,18 @@ class Thread(QtCore.QThread):
         tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
 
         num_cam = len(input_video_list)
+        video_infor_list = []
+        max_fps = 0
+        for cam_index in range(num_cam):
+            width1, height1, fps_video1 = face_mask_threading.get_info_video(input_video_list[cam_index])
+            video_infor_list.append([width1, height1, fps_video1])
+            if (max_fps < fps_video1):
+                max_fps = fps_video1
+
+        no_job_sleep_time = (1 / max_fps) / 10
 
         # create face_mask buffer, forward_message and backward_message
-        face_mask_buffer = [queue.Queue(10) for i in range(num_cam)]
+        face_mask_buffer = [queue.Queue(100) for i in range(num_cam)]
 
         forward_message = queue.Queue()
         backward_message = queue.Queue()
@@ -114,14 +126,14 @@ class Thread(QtCore.QThread):
 
         # call face mask threading
         face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
-                                                   wait_stop)
+                                                   wait_stop, no_job_sleep_time)
 
         while self._go:
             if path is not None:
                 if trigger_stop == 1:
                     forward_message.put("stop")
                     trigger_stop = 0
-                    time.sleep(3)
+                    time.sleep(1)
                     self.stop_thread()
 
                 # print("DUNGPM--" * 100)
@@ -135,18 +147,26 @@ class Thread(QtCore.QThread):
                         frame_ori = data[1]
                         list_count = data[2]
 
+                        # print("check list_count:", list_count)
+                        count = list_count[0]["Person"]
+                        print("count: ", count)
+                        self.display_no_face_mask_counting.setText(str(count))
+
                         if (ind != -1):
-                            # result_frame = cv2.resize(frame_ori, (width, height))
-                            rgbImage = cv2.cvtColor(frame_ori, cv2.COLOR_BGR2RGB)
+                            result_frame = cv2.resize(frame_ori, (width, height))
+                            rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
                             h, w, ch = rgbImage.shape
                             bytesPerLine = ch * w
                             convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
                             p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
                             self.changePixmap.emit(p)
 
+                    else:
+                        time.sleep(no_job_sleep_time)
+
             else:
                 check_input_frame()
-                time.sleep(0.5)
+                # time.sleep(0.5)
 
     def stop_thread(self):
         global path, \
@@ -156,7 +176,7 @@ class Thread(QtCore.QThread):
             draw_region_points
 
         self._go = False
-        # path = None
+        path = None
         draw_region_flag = False
         draw_count_flag = False
         draw_counting_points = []
@@ -480,8 +500,6 @@ def export_data(camera_name_input,
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-
-
         ### design
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -746,7 +764,7 @@ class Ui_MainWindow(object):
         self.export_1.clicked.connect(self.call_export_data_1)
         # call display video
         global th
-        th = Thread(MainWindow)
+        th = Thread(MainWindow, self.display_no_face_mask_counting)
         #####
 
         MainWindow.setCentralWidget(self.centralwidget)
