@@ -32,9 +32,9 @@ height = 480
 width = 640
 w_width = 900
 w_height = 700
-light_alarm = 1
+light_alarm = 0
 sound_alarm = 0
-both_alarm = 0
+both_alarm = 1
 draw_region_points = []
 draw_region_points_no_scale = []
 extra_pixels = 10  # for default points
@@ -163,8 +163,10 @@ class Thread(QtCore.QThread):
                             self.display_no_face_mask_counting.setText(str(event_count))
                             if event_count < count:
                                 count = event_count
+
                                 # update display_no_face_mask_counting
                                 self.display_no_face_mask_counting.setText(str(count))
+
                                 # insert data into database when detect new no-face-mask person
                                 data = datetime.datetime.now()
                                 data_form = {"Camera_name": name,
@@ -176,29 +178,18 @@ class Thread(QtCore.QThread):
                                 data_form_add = pd.DataFrame.from_dict([data_form])
                                 data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
                                 conn.commit()
+
                                 # active alarm
                                 if sound_alarm == 1 or both_alarm == 1:
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
                                     print("sound")
                                 elif light_alarm == 1 or both_alarm ==1:
                                     print("light")
                                 else:
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
                                     print("sound and light")
-
-                            if sound_alarm == 1:
-                                sound_file = "./sound_alarm/police.mp3"
-                                play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                                # print("check")
-                                # data = datetime.datetime.now()
-                                # data_form = {"Camera_name": name,
-                                #              "Minute": data.minute,
-                                #              "Hour": data.hour,
-                                #              "Day": data.day,
-                                #              "Month": data.month,
-                                #              "Year": data.year}
-                                # data_form_add = pd.DataFrame.from_dict([data_form])
-                                # print(data_form_add)
-                                # data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
-                                # conn.commit()
 
                             result_frame = cv2.resize(frame_ori, (width, height))
                             rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
