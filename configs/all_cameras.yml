@@ -1,7 +1,7 @@
 version: 1.0
 
 input:
-  cam_config: "/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/configs/Camera_PTZ.json"
+  cam_config: "/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/configs/all_cameras.json"
 
 output:
   save_videos_folder: /storages/data/dungpm/face-mask-test/Out/Videos
@@ -10,8 +10,8 @@ output:
   time_block_video: 10000
 
 view_window:
-  width: 720
-  height: 480
+  width: 1920
+  height: 1080
   grid_row: 1
   grid_col: 1
 

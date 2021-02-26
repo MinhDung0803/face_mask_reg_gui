@@ -85,13 +85,42 @@ import sqlite3
 # print(data)
 
 # print("A"*150)
-
+#
 # from playsound import playsound
-# playsound('./alarm/Cảnh sát âm thanh tiếng còi báo động.mp3')
+# playsound('police.mp3')
 
-import pyglet
+# import pyglet
+#
+# music = pyglet.resource.media('police.mp3')
+# music.play()
+# pyglet.app.run()
 
-music = pyglet.resource.media('police.mp3')
-music.play()
-pyglet.app.run()
+# list_test = [1, 2, 3, 4, 5, 6, 7, 8]
+# for i in range(0, len(list_test), 2):
+#     if i+3 > len(list_test):
+#         print("first point: ", (list_test[i], list_test[i+1]), "second point: ", (list_test[0], list_test[1]))
+#     else:
+#         print("first point: ", (list_test[i], list_test[i+1]), "second point: ", (list_test[i+2], list_test[i+3]))
 
+
+# from pydub import AudioSegment
+# from pydub.playback import play
+# # Input an existing wav filename
+# wavFile = "police.mp3"
+# # load the file into pydub
+# sound = AudioSegment.from_file(wavFile)
+# print("Playing wav file...")
+# # play the file
+# play(sound)
+
+name = "camera1"
+data = datetime.datetime.now()
+data_form = {"Camera_name": name,
+             "Minute": int(data.minute),
+             "Hour": int(data.hour),
+             "Day": int(data.day),
+             "Month": int(data.month),
+             "Year": int(data.year)}
+print(data_form)
+data_form_add = pd.DataFrame.from_dict([data_form])
+print(data_form_add)

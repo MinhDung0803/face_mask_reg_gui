@@ -245,32 +245,29 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
     event_queue3 = queue.Queue()
     event_queue4 = queue.Queue()
 
-    # wait_stop = threading.Barrier(5)
-    # press_quit = False
+
 
     region_scale(tracking_regions_list, tracking_scale_list)
 
-    # no_job_sleep_time = (1 / max_fps)/3
-    # call read video thread - 1
+    # cal read video threading - 1
     read_video_threading.read_video_by_threading(input_video_list, frame_drop_list, list_frame_image_buffer,
                                                  no_job_sleep_time, event_queue1, wait_stop)
 
-    # cal detecting thread - 2
+    # cal detecting threading - 2
     detection_threading.detecting_by_threading(list_frame_image_buffer, detect_step_list, video_infor_list,
                                                regionboxs_list, min_face_size_list, list_detected_buffer,
                                                no_job_sleep_time, event_queue2, wait_stop)
 
-    # call tracking thread - 3
+    # call tracking threading - 3
     tracking_threading.tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scale_list,
                                              video_infor_list, tracking_regions_list, list_trackted_buffer,
                                              no_job_sleep_time, event_queue3, wait_stop)
 
-    # call export data thread - 4
+    # call export data threading - 4
     no_job_sleep_time_for_export_data = no_job_sleep_time
     export_data_threading.export_data_by_threading(export_data_buffer, no_job_sleep_time_for_export_data,
                                                    event_queue4, wait_stop)
 
-    # print("DUNGPM--" * 100)
 
     trackregion_color = (0, 255, 255)
     boxregion_color = (0, 255, 0)
@@ -328,17 +325,16 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
         have_input = False
         have_no_job = True
 
-        # print("DUNGPM--" * 100)
+
         for cam_index in range(num_cam):
-            # print("DUNGPM--" * 100)
+
 
             if not face_mask_buffer[cam_index].full():
                 trackted_buffer = list_trackted_buffer[cam_index]
-                # print("check tracked buffer: ", trackted_buffer.empty())
                 if not trackted_buffer.empty():
 
                     have_no_job = False
-                    # print("DUNGPM--"*100)
+
 
                     data = trackted_buffer.get()
 
@@ -408,6 +404,7 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
                         show_logo(frame_ori, logo_info_list[cam_index])
                         frame_ori = counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count, font_face,
                                                  font_scale * 1.2, bbox_thick)
+
                         # for regionbox in regionboxs_list[cam_index]:
                         #     regionbox.draw_region(frame_ori, boxregion_color, boxregion_thickness, 1/detection_scale_list[cam_index])
 
@@ -512,354 +509,6 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
     # #     backward_message.put(["stop", "Stopped face recognition monitoring service"])
 
 
-def face_mask_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list,detect_step_list,
-              tracking_scale_list, regionboxs_list, tracking_regions_list,view_width, view_height, grid_row, grid_col,
-              face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time):
-
-    print("(0)--- Running Face Mask Threading")
-
-    global videowrite_flag
-    global save_grid_image
-    global min_face_size_list
-
-    if len(time_save_videos_folder_list) == 0:
-        videowrite_flag = False
-
-    num_cam = len(input_video_list)
-
-    logo_file = os.path.join(ROOT_DIR, "pictures/LogoTCX_small.png")
-    max_fps = 0
-    video_infor_list = []
-    logo_info_list = []
-
-    for cam_index in range(num_cam):
-        width1, height1, fps_video1 = get_info_video(input_video_list[cam_index])
-        video_infor_list.append([width1, height1, fps_video1])
-        # if (max_fps < fps_video1):
-        #     max_fps = fps_video1
-
-        # load logo
-        logo_rgb_image, invert_alpha_channel = read_transparent_png_and_scale(logo_file, width1, height1, 0.12)
-        logo_info_list.append([logo_rgb_image, invert_alpha_channel])
-
-    gd.set_video_infor_list(video_infor_list)
-
-    # currentfile_saved_frame_count_list = [0] * num_cam
-    saved_frame_count_list = [0] * num_cam
-    # saved_video_count_list = [0] * num_cam
-    num_of_frame_in_block_list = [0] * num_cam
-
-    out = []
-
-    change_fps(video_infor_list, frame_drop_list)
-
-    # -----
-    if videowrite_flag:
-        for cam_index in range(num_cam):
-            out1, fps_video1 = VideoWriter_create(cam_index, time_save_videos_folder_list, video_infor_list,
-                                                  saved_frame_count_list[cam_index])
-            num_of_frame_in_block_list[cam_index] = fps_video1 * time_block_video
-
-            out.append(out1)
-
-    if save_grid_image:
-        fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-        size = (640, 480)
-        now_st = datetime.now().strftime("%d-%m-%Y_%H:%M:%S:%f")
-        grid_video_name = os.path.join("/media/gg-ai-team/DATA/out", now_st + ".mp4")
-        grid_videowriter = cv2.VideoWriter(grid_video_name, fourcc, video_infor_list[0][2], size)
-    # -----
-
-
-    list_frame_image_buffer = [queue.Queue(100) for i in range(num_cam)]
-    list_detected_buffer = [queue.Queue(100) for i in range(num_cam)]
-    list_trackted_buffer = [queue.Queue(100) for i in range(num_cam)]
-    export_data_buffer = queue.Queue(100)  # unlimited
-
-    gd.set_ref_export_data_buffer(export_data_buffer)
-    # gd.set_backward_message(backward_message)
-
-    event_queue1 = queue.Queue()
-    event_queue2 = queue.Queue()
-    event_queue3 = queue.Queue()
-    event_queue4 = queue.Queue()
-
-    # wait_stop = threading.Barrier(5)
-    # press_quit = False
-
-    region_scale(tracking_regions_list, tracking_scale_list)
-
-    # no_job_sleep_time = (1 / max_fps)/2
-
-    # # call read video thread - 1
-    # read_video_threading.read_video_by_threading(input_video_list, frame_drop_list, list_frame_image_buffer,
-    #                                              no_job_sleep_time, event_queue1, wait_stop)
-    #
-    # # cal detecting thread - 2
-    # detection_threading.detecting_by_threading(list_frame_image_buffer, detect_step_list, video_infor_list,
-    #                                            regionboxs_list, min_face_size_list, list_detected_buffer,
-    #                                            no_job_sleep_time, event_queue2, wait_stop)
-    #
-    # # call tracking thread - 3
-    # tracking_threading.tracking_by_threading(list_detected_buffer, export_data_buffer, tracking_scale_list,
-    #                                          video_infor_list, tracking_regions_list, list_trackted_buffer,
-    #                                          no_job_sleep_time, event_queue3, wait_stop)
-    #
-    # # call export data thread - 4
-    # no_job_sleep_time_for_export_data = no_job_sleep_time
-    # export_data_threading.export_data_by_threading(export_data_buffer, no_job_sleep_time_for_export_data,
-    #                                                event_queue4, wait_stop)
-
-    # print("DUNGPM--" * 100)
-
-    trackregion_color = (0, 255, 255)
-    boxregion_color = (0, 255, 0)
-
-    sum_time = 0
-    count = 0
-
-    list_closed_cam = [False] * num_cam
-
-    # Map_u = graphic_utils.cal_map_u(10)  # for fast interpolation s-pline
-    global delay_time
-    pausing = False
-
-    count_test = 0
-    sum_test = 0
-    path = "/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/Le_trao_giai.MP4"
-
-    cap = cv2.VideoCapture(path)
-    while True:
-        ret, frame1 = cap.read()
-        # print("DUNGPM--" * 100)
-
-
-        time_start = time.time()
-        # if (forward_message is not None) and (forward_message.empty() is False):
-        #     # print("forward_message status: ", forward_message.empty())
-        if forward_message.empty() is False:
-            event_message = forward_message.get()
-            if event_message == "stop":
-                event_queue1.put("stop")
-                event_queue2.put("stop")
-                event_queue3.put("stop")
-                event_queue4.put("stop")
-
-                print("Face Mask threading is waitting to stop")
-                wait_stop.wait()
-                print("(0)--- Stoped Face Mask threading")
-                return
-
-
-                # press_quit = True
-                # print("DUNGPM--" * 100)
-
-                # break
-            elif event_message == "pause/unpause":
-                event_queue1.put("pause/unpause")
-                event_queue2.put("pause/unpause")
-                event_queue3.put("pause/unpause")
-                event_queue4.put("pause/unpause")
-                pausing = not pausing
-
-            elif event_message == "update-view":
-                event_queue4.put("update-view")
-
-        if (pausing):
-            time.sleep(no_job_sleep_time)
-            continue
-
-        have_input = False
-        have_no_job = True
-
-        # print("DUNGPM--" * 100)
-        # for cam_index in range(num_cam):
-        #     # print("DUNGPM--" * 100)
-        #
-        #     if not face_mask_buffer[cam_index].full():
-        #         trackted_buffer = list_trackted_buffer[cam_index]
-        #         # print("check tracked buffer: ", trackted_buffer.empty())
-        #         if not trackted_buffer.empty():
-        #
-        #             have_no_job = False
-        #             # print("DUNGPM--"*100)
-        #
-        #             data = trackted_buffer.get()
-        #
-        #             ind = data[0]
-        #             frame = data[1]
-        #             frame_ori = data[2]
-        #             list_count = data[3]
-        #
-        #             if (ind != -1):
-        #
-        #                 # have_input = True
-        #
-        #                 save_frame_ori = frame_ori.copy()
-        #                 t1 = time.time()
-        #                 boxs_show = data[4]
-        #                 names_show = data[5]
-        #                 color_show = data[6]
-        #                 tails_show = data[7]
-        #
-        #                 # ------------------ draw infor -----------------------
-        #
-        #                 up_scale = 1 / tracking_scale_list[cam_index]
-        #
-        #                 bbox_thick = int(0.6 * (frame_ori.shape[0] + frame_ori.shape[1]) / 1000)
-        #                 if bbox_thick < 2:
-        #                     bbox_thick = 2
-        #                 font_face = cv2.FONT_HERSHEY_COMPLEX_SMALL
-        #                 font_scale = 0.75 * bbox_thick
-        #
-        #                 invert_scale = 1.0 / tracking_scale_list[cam_index]
-        #
-        #                 for bbox, name, color, tail in zip(boxs_show, names_show, color_show, tails_show):
-        #
-        #                     show_box = [int(bbox[0] * up_scale), int(bbox[1] * up_scale), int(bbox[2] * up_scale),
-        #                                 int(bbox[3] * up_scale)]
-        #
-        #                     cv2.rectangle(frame_ori, (show_box[0], show_box[1]), (show_box[2], show_box[3]), color,
-        #                                   bbox_thick)
-        #
-        #                     # -----
-        #                     # box_size = str(int((bbox[2] - bbox[0]) * up_scale)) + 'x' + str(
-        #                     #     int((bbox[3] - bbox[1]) * up_scale))
-        #
-        #                     # draw_caption(frame_ori, name, show_box, font_face, font_scale, (0, 0, 255), (255, 255, 0),
-        #                     #              bbox_thick)
-        #                     # -----
-        #
-        #                     Len = len(tail)
-        #                     if Len >= 4:
-        #                         # cv2.line(frame_ori,(int(tail[0]*scale), int(tail[1]*scale)), (int(tail[Len-2])*scale, int(tail[Len-1])*scale),color, 2)
-        #                         smooth_tail = graphic_utils.filter_tail(tail, 7)
-        #
-        #                         # spline_tail = graphic_utils.spline_interpolation_fast(smooth_tail, Map_u)
-        #
-        #                         spline_tail = smooth_tail
-        #
-        #                         tail_lines = []
-        #                         for i in range(0, len(spline_tail), 2):
-        #                             tail_lines.append([int(spline_tail[i] * up_scale), int(spline_tail[i + 1] * up_scale)])
-        #
-        #                         points = np.array(tail_lines)
-        #                         cv2.polylines(frame_ori, np.int32([points]), 0, color, bbox_thick, cv2.LINE_AA)
-        #
-        #                 for tracking_regions in tracking_regions_list[cam_index]:
-        #                     tracking_regions.draw_region(frame_ori, trackregion_color, bbox_thick, invert_scale, True, 1, 1)
-        #
-        #                 show_logo(frame_ori, logo_info_list[cam_index])
-        #                 frame_ori = counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count, font_face,
-        #                                          font_scale * 1.2, bbox_thick)
-        #                 # for regionbox in regionboxs_list[cam_index]:
-        #                 #     regionbox.draw_region(frame_ori, boxregion_color, boxregion_thickness, 1/detection_scale_list[cam_index])
-        #
-        #                 # for region in tracking_regions_list[cam_index]:
-        #                 #     region.draw_region(frame_ori, trackregion_color, trackregion_thickness, 1/tracking_scale_list[cam_index], True, 1, 0)
-        #
-        #                 # counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count)
-        #
-        #                 # put data in to face_mask_buffer
-        #                 # frame_ori = cv2.resize(frame_ori, (640,480))
-        #                 # face_mask_buffer[cam_index].put([ind, frame_ori, list_count])
-        #                 face_mask_buffer[cam_index].put([ind, frame1, list_count])
-        #                 # ------------------ end draw infor -----------------------
-        #
-        #                 t2 = time.time()
-        #
-        #                 fps = (1. / (t2 - t1))
-        #                 # print(" Visualization speed = %f fps"%(fps))
-        #
-        #                 sum_time += (t2 - t1)
-        #                 count += 1
-        #
-        #                 # -----
-        #                 # if videowrite_flag:
-        #                 #     out[cam_index].write(save_frame_ori)
-        #                 #     saved_frame_count_list[cam_index] += 1
-        #                 #     currentfile_saved_frame_count_list[cam_index] += 1
-        #                 #
-        #                 #     if (currentfile_saved_frame_count_list[cam_index] >= num_of_frame_in_block_list[cam_index]):
-        #                 #         out[cam_index].release()
-        #                 #         currentfile_saved_frame_count_list[cam_index] = 0
-        #                 #         saved_video_count_list[cam_index] += 1
-        #                 #
-        #                 #         out1, fps_video1 = VideoWriter_create(cam_index, time_save_videos_folder_list,
-        #                 #                                               video_infor_list,
-        #                 #                                               saved_frame_count_list[cam_index])
-        #                 #
-        #                 #         out[cam_index] = out1
-        #                 # -----
-        #
-        #
-        #             else:
-        #
-        #                 # put data in to face_mask_buffer
-        #                 # face_mask_buffer[cam_index].put([-1, frame_ori, list_count])
-        #                 face_mask_buffer[cam_index].put([-1, frame1, list_count])
-        #                 list_closed_cam[cam_index] = True
-        #
-        #                 # -----
-        #                 # if videowrite_flag:
-        #                 #     if out[cam_index] is not None:
-        #                 #         out[cam_index].release()
-        #                 #         out[cam_index] = None
-        #
-        #                 # if (cam_index == 0):
-        #                 #     print(" Spend time 1: ", (t4-t3)/60, "min")
-        #                 # -----
-        #
-        #         else:
-        #             time.sleep(no_job_sleep_time)
-
-
-        if ret == True:
-            face_mask_buffer[0].put([1, frame1])
-
-        # time.sleep(0.001)
-
-        if is_closed_all(list_closed_cam):
-
-            print(" Visualization speed Ave: ", count / (sum_time), "fps")
-            print('Face mask threding waiting for stop')
-            wait_stop.wait()
-
-        elif (have_no_job):
-            time.sleep(no_job_sleep_time)
-
-
-    print("(0)--- Stopped Face Mask Threading")
-
-    # time_end = time.time()
-    #
-    # count_test += 1
-    # sum_test += time_end - time_start
-    #
-    # if (count_test % 30) == 0:
-    #     print("Spend time: ", time_end - time_start)
-    #     print("FPS: ", count_test / sum_test)
-    #
-    #     # if press_quit == True:
-    #     #     break
-    #     #
-    #     # if is_closed_all(list_closed_cam):
-    #     #     break
-    #
-    # if videowrite_flag:
-    #     for i in range(len(out)):
-    #         if (out[i] is not None):
-    #             out[i].release()
-    #
-    # # print(" Visualization speed Ave: ", count / (sum_time), "fps")
-    #
-    # print('Visualization waiting for stop')
-    # # wait_stop.wait()
-    # print('--------------------------------------------------------------------test stoped')
-    # # if backward_message is not None:
-    # #     backward_message.put(["stop", "Stopped face recognition monitoring service"])
-
-
 def parser_cam_infor(cam_infor_list):
 
     input_video_list = []
@@ -879,9 +528,11 @@ def parser_cam_infor(cam_infor_list):
         tracking_scale = cam_infor["tracking_scale"]
 
         ROIs_data = cam_infor["ROIs"]
+        # print("ROIs_data: ", ROIs_data)
         regionbox_list = region_util.create_regionboxs(ROIs_data)
 
         tracking_regions_data = cam_infor["tracking_regions"]
+        # print("tracking_regions_data: ", tracking_regions_data)
         tracking_region_list = region_util.create_tracking_regions(tracking_regions_data)
 
         cam_id_list.append(id)
@@ -945,19 +596,15 @@ def face_mask_run(config_file, face_mask_buffer, forward_message, backward_messa
     time_save_videos_folder_list = gd.set_folder_save_video_face_data(save_videos_folder_list, save_faces_folder_list,
                                                                       save_data_folder_list)
 
-    t1 = time.time()
+    # t1 = time.time()
 
-    # face_mask_dungpm(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list,
-    #           tracking_scale_list, regionboxs_list, tracking_regions_list,view_width, view_height, grid_row, grid_col,
-    #           face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time)
 
     face_mask(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list,
               tracking_scale_list, regionboxs_list, tracking_regions_list,view_width, view_height, grid_row, grid_col,
               face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time)
 
-    t2 = time.time()
-
-    print("Spend time 2:", (t2 - t1) / 60, "min")
+    # t2 = time.time()
+    # print("Spend time 2:", (t2 - t1) / 60, "min")
 
 def face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time):
     t = threading.Thread(target=face_mask_run, args=[config_file, face_mask_buffer, forward_message, backward_message,
