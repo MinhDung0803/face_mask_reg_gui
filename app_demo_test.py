@@ -10,12 +10,13 @@ import queue
 import json
 import yaml
 import pyglet
-# from pydub import AudioSegment
-# from pydub.playback import playc
+from pydub import AudioSegment
+from pydub.playback import play
 import datetime
 
 import face_mask_threading
 from mask_utils import global_variable_define as gd
+import play_alarm_audio_threading
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -159,6 +160,7 @@ class Thread(QtCore.QThread):
 
                             # update, active alarm option
                             event_count = list_count[0]["Person"]
+                            self.display_no_face_mask_counting.setText(str(event_count))
                             if event_count < count:
                                 count = event_count
                                 # update display_no_face_mask_counting
@@ -174,9 +176,18 @@ class Thread(QtCore.QThread):
                                 data_form_add = pd.DataFrame.from_dict([data_form])
                                 data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
                                 conn.commit()
+                                # active alarm
+                                if sound_alarm == 1 or both_alarm == 1:
+                                    print("sound")
+                                elif light_alarm == 1 or both_alarm ==1:
+                                    print("light")
+                                else:
+                                    print("sound and light")
 
                             if sound_alarm == 1:
-                                print("check")
+                                sound_file = "./sound_alarm/police.mp3"
+                                play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                # print("check")
                                 # data = datetime.datetime.now()
                                 # data_form = {"Camera_name": name,
                                 #              "Minute": data.minute,
