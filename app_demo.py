@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-
-# Form implementation generated from reading ui file 'log_test.ui'
-#
-# Created by: PyQt5 UI code generator 5.9.2
-#
-# WARNING! All changes made in this file will be lost!
-
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sqlite3
 import matplotlib.pyplot as plt
@@ -17,6 +9,10 @@ import threading
 import queue
 import json
 import yaml
+import pyglet
+# from pydub import AudioSegment
+# from pydub.playback import playc
+import datetime
 
 import face_mask_threading
 from mask_utils import global_variable_define as gd
@@ -39,50 +35,63 @@ light_alarm = 1
 sound_alarm = 0
 both_alarm = 0
 draw_region_points = []
-extra_pixels = 5  # for default points
-default_region_points = [
-    [(0 + extra_pixels, 0 + extra_pixels), (width - extra_pixels, 0 + extra_pixels)],
-    [(width - extra_pixels, 0 + extra_pixels), (width - extra_pixels, height - extra_pixels)],
-    [(width - extra_pixels, height - extra_pixels), (0 + extra_pixels, height - extra_pixels)],
-    [(0 + extra_pixels, height - extra_pixels), (0 + extra_pixels, 0 + extra_pixels)]]
+draw_region_points_no_scale = []
+extra_pixels = 10  # for default points
+scale = 3
+# default_region_points = [(0 + extra_pixels, 0 + extra_pixels),(width - extra_pixels, 0 + extra_pixels),
+#                          (width - extra_pixels, height - extra_pixels),(0 + extra_pixels, height - extra_pixels)]
 draw_region_flag = False
 draw_counting_points = []
 default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 trigger_stop = 0
 
-# connect to sql database
-conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
-c = conn.cursor()
-
 # config_file
-config_file = "./configs/Cam_PTZ.yml"
+config_file = "./configs/all_cameras.yml"
 
 
+def create_default_region(w_in, h_in, extra_pixels_in):
+    result = [0 + extra_pixels_in, 0 + extra_pixels_in, w_in - extra_pixels_in, 0 + extra_pixels_in, w_in - extra_pixels_in,
+              h_in - extra_pixels_in, 0 + extra_pixels_in, h_in - extra_pixels_in]
+    return result
+
+
+def create_default_counting_line(w_in, h_in, extra_pixels_in):
+    result = [0+extra_pixels_in, int(h_in / 2), w_in-extra_pixels_in, int(h_in / 2)]
+    return result
+
+def create_direction_point(w_in, h_in):
+    result = [int(w_in/2), int(h_in/2)+50]
+    return result
 
 
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, parent):
+    def __init__(self, parent, display_no_face_mask_counting):
         QtCore.QThread.__init__(self, parent)
         self._go = None
+        self.display_no_face_mask_counting = display_no_face_mask_counting
 
     def run(self):
         global count, \
             height, \
             width, \
-            draw_region_points, \
-            default_region_points, \
-            draw_region_flag, \
-            default_counting_points, \
-            draw_count_flag, \
-            draw_counting_points, \
             config_file, \
             trigger_stop, \
-            conn, \
-            c
+            count, \
+            light_alarm, \
+            sound_alarm, \
+            both_alarm, \
+            name
+
+        # connect to sql database
+        conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+        # c = conn.cursor()
+
+        # run mode variable
         self._go = True
+
         # get infor from config_file
         yaml.warnings({'YAMLLoadWarning': False})
         with open(config_file, 'r') as fs:
@@ -101,9 +110,18 @@ class Thread(QtCore.QThread):
         tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
 
         num_cam = len(input_video_list)
+        video_infor_list = []
+        max_fps = 0
+        for cam_index in range(num_cam):
+            width1, height1, fps_video1 = face_mask_threading.get_info_video(input_video_list[cam_index])
+            video_infor_list.append([width1, height1, fps_video1])
+            if (max_fps < fps_video1):
+                max_fps = fps_video1
+
+        no_job_sleep_time = (1 / max_fps) / 10
 
         # create face_mask buffer, forward_message and backward_message
-        face_mask_buffer = [queue.Queue(10) for i in range(num_cam)]
+        face_mask_buffer = [queue.Queue(100) for i in range(num_cam)]
 
         forward_message = queue.Queue()
         backward_message = queue.Queue()
@@ -114,19 +132,21 @@ class Thread(QtCore.QThread):
 
         # call face mask threading
         face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
-                                                   wait_stop)
+                                                   wait_stop, no_job_sleep_time)
+
+        # event count to update no face mask person and active alarm mode
+        event_count = 0
 
         while self._go:
             if path is not None:
                 if trigger_stop == 1:
                     forward_message.put("stop")
                     trigger_stop = 0
-                    time.sleep(3)
+                    time.sleep(1)
                     self.stop_thread()
 
-                # print("DUNGPM--" * 100)
+                # get information form the queue
                 for cam_index in range(num_cam):
-
                     face_mask_output_data = face_mask_buffer[cam_index]
                     if face_mask_output_data.empty() == False:
                         data = face_mask_output_data.get()
@@ -135,18 +155,55 @@ class Thread(QtCore.QThread):
                         frame_ori = data[1]
                         list_count = data[2]
 
-                        if (ind != -1):
-                            # result_frame = cv2.resize(frame_ori, (width, height))
-                            rgbImage = cv2.cvtColor(frame_ori, cv2.COLOR_BGR2RGB)
-                            h, w, ch = rgbImage.shape
-                            bytesPerLine = ch * w
-                            convertToQtFormat = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
+                        if ind != -1:
+
+                            # update, active alarm option
+                            event_count = list_count[0]["Person"]
+                            if event_count < count:
+                                count = event_count
+                                # update display_no_face_mask_counting
+                                self.display_no_face_mask_counting.setText(str(count))
+                                # insert data into database when detect new no-face-mask person
+                                data = datetime.datetime.now()
+                                data_form = {"Camera_name": name,
+                                             "Minute": data.minute,
+                                             "Hour": data.hour,
+                                             "Day": data.day,
+                                             "Month": data.month,
+                                             "Year": data.year}
+                                data_form_add = pd.DataFrame.from_dict([data_form])
+                                data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
+                                conn.commit()
+
+                            if sound_alarm == 1:
+                                print("check")
+                                # data = datetime.datetime.now()
+                                # data_form = {"Camera_name": name,
+                                #              "Minute": data.minute,
+                                #              "Hour": data.hour,
+                                #              "Day": data.day,
+                                #              "Month": data.month,
+                                #              "Year": data.year}
+                                # data_form_add = pd.DataFrame.from_dict([data_form])
+                                # print(data_form_add)
+                                # data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
+                                # conn.commit()
+
+                            result_frame = cv2.resize(frame_ori, (width, height))
+                            rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+                            h_result_frame, w_result_frame, ch = rgbImage.shape
+                            bytesPerLine = ch * w_result_frame
+                            convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
+                                                             bytesPerLine, QtGui.QImage.Format_RGB888)
                             p = convertToQtFormat.scaled(640, 480, QtCore.Qt.KeepAspectRatio)
                             self.changePixmap.emit(p)
 
+                    else:
+                        time.sleep(no_job_sleep_time)
+
             else:
                 check_input_frame()
-                time.sleep(0.5)
+                # time.sleep(0.5)
 
     def stop_thread(self):
         global path, \
@@ -156,7 +213,7 @@ class Thread(QtCore.QThread):
             draw_region_points
 
         self._go = False
-        # path = None
+        path = None
         draw_region_flag = False
         draw_count_flag = False
         draw_counting_points = []
@@ -215,69 +272,65 @@ def check_camera_name_plotting():
     alert.exec_()
 
 
-def mouse_callback(event, x, y, flags, param):
-    global mouse_down
-    global step
-
-    mouse_down = False
-
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if mouse_down is False:
-            mouse_down = True
-            step = 0
-        else:
-            step += 1
-
-    elif event == cv2.EVENT_LBUTTONUP and mouse_down:
-        mouse_down = False
-
-
 def shape_selection_for_region(event, x, y, flags, param):
-    global ref_point, draw_region_points
+    global draw_region_points, scale, draw_region_points_no_scale
     if event == cv2.EVENT_LBUTTONDOWN:
-        ref_point = [(x, y)]
-    elif event == cv2.EVENT_LBUTTONUP:
+        ref_point = (x, y)
+        # with scale
+        draw_region_points.append(x*scale)
+        draw_region_points.append(y*scale)
+        # with no scale
+        draw_region_points_no_scale.append(x)
+        draw_region_points_no_scale.append(y)
 
-        ref_point.append((x, y))
-        draw_region_points.append(ref_point)
-        cv2.line(image, ref_point[0], ref_point[1], (0, 0, 255), 2)
-        cv2.imshow("Draw ROI", image)
+        cv2.circle(image, (ref_point[0], ref_point[1]), 4, (0, 0, 255), -2)
+        cv2.imshow("Draw Tracking Region", image)
 
 
 def shape_selection_for_counting(event, x, y, flags, param):
-    global ref_point_c, draw_counting_points
+    global ref_point_c, draw_counting_points, scale
     if event == cv2.EVENT_LBUTTONDOWN:
-        ref_point_c = [(x, y)]
-    elif event == cv2.EVENT_LBUTTONUP:
+        ref_point_c = (x, y)
+        # with scale
+        draw_counting_points.append(x * scale)
+        draw_counting_points.append(y * scale)
 
-        ref_point_c.append((x, y))
-        draw_counting_points.append(ref_point_c)
-        cv2.line(image, ref_point_c[0], ref_point_c[1], (0, 255, 255), 2)
+        cv2.circle(image, (ref_point_c[0], ref_point_c[1]), 4, (0, 255, 0), -2)
         cv2.imshow("Draw Counting Region", image)
 
 
 def draw_region():
-    global path, width, height, draw_region_points, image, draw_region_flag
+    global path, width, height, draw_region_points, image, draw_region_flag, scale, draw_region_points_no_scale
     draw_region_flag = True
     # read and write original image
     cap = cv2.VideoCapture(path)
+    w = int(cap.get(3))
+    h = int(cap.get(4))
     ret, frame = cap.read()
-    frame = cv2.resize(frame, (width, height))
+    frame = cv2.resize(frame, (int(w/scale), int(h/scale)))
     if ret:
         cv2.imwrite("./draw/original_image.jpg", frame)
         # draw on original image and write when done
         image = cv2.imread("./draw/original_image.jpg")
         clone = image.copy()
-        cv2.namedWindow("Draw ROI")
-        cv2.setMouseCallback("Draw ROI", shape_selection_for_region)
+        cv2.namedWindow("Draw Tracking Region")
+        cv2.setMouseCallback("Draw Tracking Region", shape_selection_for_region)
         while True:
-            cv2.imshow("Draw ROI", image)
+            cv2.imshow("Draw Tracking Region", image)
             key = cv2.waitKey(1)
             if key == 32:
                 image = clone.copy()
                 draw_region_points = []
             elif key == 13:
                 break
+        for i in range(0, len(draw_region_points_no_scale), 2):
+            if i + 3 > len(draw_region_points_no_scale):
+                cv2.line(image, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                         (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
+            else:
+                cv2.line(image, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                         (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
+
     cv2.imwrite('./draw/draw_region_image.jpg', image)
     cap.release()
     cv2.destroyAllWindows()
@@ -311,7 +364,10 @@ def plotting(name,
              check_day,
              check_month,
              check_year):
-    global c
+    # connect to sql database
+    conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+    c = conn.cursor()
+
     if check_day == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
                 f"and Year = {year_input} " \
@@ -400,6 +456,8 @@ def plotting(name,
         plt.savefig("./figure/" + name)
         plt.close()
         time.sleep(0.5)
+    # commit database
+    conn.commit()
 
 
 def restore(settings):
@@ -440,7 +498,10 @@ def export_data(camera_name_input,
                check_day,
                check_month,
                check_year):
-    global c
+    # connect to sql database
+    conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+    c = conn.cursor()
+
     if check_day == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
                 f"and Year = {year_input} " \
@@ -477,11 +538,11 @@ def export_data(camera_name_input,
                + str(year_input) + "-" \
                + "NoFaceMaskData.csv"
         df.to_csv('./export_data/' + name)
+    # commit data base
+    conn.commit()
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-
-
         ### design
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -746,7 +807,7 @@ class Ui_MainWindow(object):
         self.export_1.clicked.connect(self.call_export_data_1)
         # call display video
         global th
-        th = Thread(MainWindow)
+        th = Thread(MainWindow, self.display_no_face_mask_counting)
         #####
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -812,7 +873,18 @@ class Ui_MainWindow(object):
         self.display_video.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def get_path(self):
-        global path, name, config_file
+        global path, \
+            name, \
+            config_file, \
+            width, \
+            height,\
+            draw_region_points, \
+            draw_region_flag, \
+            default_counting_points, \
+            draw_count_flag, \
+            draw_counting_points, \
+            extra_pixels
+
         data_path = self.source_path.text()
         camera_name_source = self.source_input_camera_name.text()
         # check for IP camera path
@@ -825,21 +897,55 @@ class Ui_MainWindow(object):
                 check_path_for_ip_camera()
             else:
                 path = data_path
+
+                # ----- get width, height of input
+                cap = cv2.VideoCapture(path)
+                w = int(cap.get(3))
+                h = int(cap.get(4))
+                cap.release()
+                # -----
+
+                # ----- get tracking region
+                if draw_region_flag:
+                    final_draw_region = draw_region_points
+                else:
+                    final_draw_region = create_default_region(w, h, extra_pixels)
+                # print("final_draw_region: ", final_draw_region)
+
+                # ----- get counting line
+                if draw_count_flag:
+                    final_counting_line = draw_counting_points
+                    final_direction_point = [int(final_counting_line[2]/2), final_counting_line[1]+100]
+                else:
+                    final_counting_line = create_default_counting_line(w, h, extra_pixels)
+                    final_direction_point = create_direction_point(w, h)
+
+                # ----- update json file
                 # load yaml config file
                 yaml.warnings({'YAMLLoadWarning': False})
                 with open(config_file, 'r') as fs:
                     config = yaml.load(fs)
-                    # config = yaml.load(fs, Loader=yaml.FullLoader)
-
                 cam_config = config["input"]["cam_config"]
 
+                # open json file
                 with open(cam_config) as json_file:
                     json_data = json.load(json_file)
                 json_file.close()
-                # update IP address for IP camera into Config JSOn file
+
+                # update infor in json file
                 json_data["data"][0]["url"] = path
+                json_data["data"][0]["tracking_regions"][0]["points"] = final_draw_region
+                json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["points"] = \
+                    final_counting_line
+                json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["direction_point"] = \
+                    final_direction_point
+                json_data["data"][0]["tracking_regions"][0]["id_show_point"] = final_direction_point
+
+
+                # write json file
                 with open(json_file.name, "w") as outfile:
                     json.dump(json_data, outfile)
+                # -----
 
         # check for webcam ID
         if self.radioButton_webcam.isChecked():
