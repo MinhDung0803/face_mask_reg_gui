@@ -89,8 +89,9 @@ import sqlite3
 # from playsound import playsound
 # playsound('./alarm/Cảnh sát âm thanh tiếng còi báo động.mp3')
 
-import os
+import pyglet
 
-file = "police.mp3"
-os.system("./alarm/" + file)
+music = pyglet.resource.media('police.mp3')
+music.play()
+pyglet.app.run()
 
