@@ -1,9 +1,9 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import datetime
-import os
-import shutil
-import sqlite3
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import datetime
+# import os
+# import shutil
+# import sqlite3
 
 # read data from csv file
 # data = pd.read_csv('data.csv')
@@ -103,24 +103,41 @@ import sqlite3
 #         print("first point: ", (list_test[i], list_test[i+1]), "second point: ", (list_test[i+2], list_test[i+3]))
 
 
-# from pydub import AudioSegment
-# from pydub.playback import play
-# # Input an existing wav filename
-# wavFile = "police.mp3"
-# # load the file into pydub
-# sound = AudioSegment.from_file(wavFile)
-# print("Playing wav file...")
-# # play the file
-# play(sound)
+# name = "camera1"
+# data = datetime.datetime.now()
+# data_form = {"Camera_name": name,
+#              "Minute": int(data.minute),
+#              "Hour": int(data.hour),
+#              "Day": int(data.day),
+#              "Month": int(data.month),
+#              "Year": int(data.year)}
+# print(data_form)
+# data_form_add = pd.DataFrame.from_dict([data_form])
+# print(data_form_add)
 
-name = "camera1"
-data = datetime.datetime.now()
-data_form = {"Camera_name": name,
-             "Minute": int(data.minute),
-             "Hour": int(data.hour),
-             "Day": int(data.day),
-             "Month": int(data.month),
-             "Year": int(data.year)}
-print(data_form)
-data_form_add = pd.DataFrame.from_dict([data_form])
-print(data_form_add)
+
+from pydub import AudioSegment
+from pydub.playback import play
+import threading
+
+
+def play_audio(file):
+    # Input an existing wav filename
+    wavFile = "police.mp3"
+    # load the file into pydub
+    sound = AudioSegment.from_file(wavFile)
+    print("Playing wav file...")
+    # play the file
+    play(sound)
+
+
+def play_audio_by_threading(file):
+    t = threading.Thread(target = play_audio, args = [file])
+    t.start()
+
+
+if __name__ == "__main__":
+    # Input an existing wav filename
+    wavFile = "./sound_alarm/police.mp3"
+    play_audio_by_threading(wavFile)
+
