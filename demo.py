@@ -19,7 +19,6 @@ from mask_utils import global_variable_define as gd
 import play_alarm_audio_threading
 
 import warnings
-
 warnings.filterwarnings("ignore")
 
 # variables
@@ -31,9 +30,9 @@ height = 480
 width = 640
 w_width = 900
 w_height = 700
-light_alarm = 1
+light_alarm = 0
 sound_alarm = 0
-both_alarm = 0
+both_alarm = 1
 draw_region_points = []
 draw_region_points_no_scale = []
 draw_counting_no_scale = []
@@ -41,7 +40,7 @@ extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
 draw_region_flag = False
 draw_counting_points = []
-default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
+# default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 trigger_stop = 0
 set_working_time_flag = False
@@ -55,8 +54,6 @@ to_time_minute = None
 # config_file
 # ----- KEY
 config_file = "./configs/all_cameras.yml"
-
-
 # ----- KEY
 
 
@@ -109,6 +106,7 @@ class Thread(QtCore.QThread):
         json_file.close()
 
         cam_infor_list = json_data["data"]
+        insert_name = json_data["data"][0]["name"]
 
         input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
         tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
@@ -160,74 +158,8 @@ class Thread(QtCore.QThread):
                         list_count = data[2]
 
                         if ind != -1:
-
-                            # update, active alarm option
+                            # get number of no face mask person
                             event_count = list_count[0]["Person"]
-                            self.display_no_face_mask_counting.setText(str(event_count))
-                            if event_count < count:
-                                count = event_count
-
-                                # update display_no_face_mask_counting
-                                self.display_no_face_mask_counting.setText(str(count))
-
-                                # insert data into database when detect new no-face-mask person
-                                # AND also check check setting time status
-                                if set_working_time_flag:
-                                    # check setting time (FROM)
-                                    information1_time = datetime.datetime.now()
-                                    print("Time1:", information1_time)
-                                    if (int(information1_time.hour) >= int(from_time_hour)) \
-                                            and (int(information1_time.minute) >= int(from_time_minute)):
-                                        data = datetime.datetime.now()
-                                        data_form = {"Camera_name": name,
-                                                     "Minute": data.minute,
-                                                     "Hour": data.hour,
-                                                     "Day": data.day,
-                                                     "Month": data.month,
-                                                     "Year": data.year}
-                                        data_form_add = pd.DataFrame.from_dict([data_form])
-                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                                        conn_display.commit()
-                                else:
-                                    data = datetime.datetime.now()
-                                    data_form = {"Camera_name": name,
-                                                 "Minute": data.minute,
-                                                 "Hour": data.hour,
-                                                 "Day": data.day,
-                                                 "Month": data.month,
-                                                 "Year": data.year}
-                                    data_form_add = pd.DataFrame.from_dict([data_form])
-                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                                    conn_display.commit()
-
-                                # active alarm
-                                if sound_alarm == 1:
-                                    print("[INFO] sound")
-                                    sound_file = "./sound_alarm/police.mp3"
-                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                                elif light_alarm == 1:
-                                    print("[INFO] light")
-                                else:
-                                    print("[INFO] sound and light")
-                                    sound_file = "./sound_alarm/police.mp3"
-                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
-
-                            # # test function
-                            # if sound_alarm == 1:
-                            #     # sound_file = "./sound_alarm/police.mp3"
-                            #     # play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                            #     print("check")
-                            #     data = datetime.datetime.now()
-                            #     data_form = {"Camera_name": name,
-                            #                  "Minute": data.minute,
-                            #                  "Hour": data.hour,
-                            #                  "Day": data.day,
-                            #                  "Month": data.month,
-                            #                  "Year": data.year}
-                            #     data_form_add = pd.DataFrame.from_dict([data_form])
-                            #     print(data_form_add)
-                            #     data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
-                            #     conn.commit()
 
                             # display on APP
                             result_frame = cv2.resize(frame_ori, (width, height))
@@ -242,10 +174,62 @@ class Thread(QtCore.QThread):
                     else:
                         time.sleep(no_job_sleep_time)
 
+                # event
+                if count < event_count:
+                    count = event_count
+                    print("check")
+
+                    # update display_no_face_mask_counting
+                    self.display_no_face_mask_counting.setText(str(count))
+
+                    # insert data into database when detect new no-face-mask person
+                    # AND also check check setting time status
+                    if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
+                        # check setting time (FROM)
+                        information1_time = datetime.datetime.now()
+                        print("Time1:", information1_time)
+                        if (int(information1_time.hour) >= int(from_time_hour)) \
+                                and (int(information1_time.minute) >= int(from_time_minute)):
+                            data = datetime.datetime.now()
+                            data_form = {"Camera_name": insert_name,
+                                         "Minute": data.minute,
+                                         "Hour": data.hour,
+                                         "Day": data.day,
+                                         "Month": data.month,
+                                         "Year": data.year}
+                            data_form_add = pd.DataFrame.from_dict([data_form])
+                            data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                            print("[INFO]-- Inserted data into Database")
+                            conn_display.commit()
+                    else:
+                        data = datetime.datetime.now()
+                        data_form = {"Camera_name": insert_name,
+                                     "Minute": data.minute,
+                                     "Hour": data.hour,
+                                     "Day": data.day,
+                                     "Month": data.month,
+                                     "Year": data.year}
+                        data_form_add = pd.DataFrame.from_dict([data_form])
+                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                        print("[INFO]-- Inserted data into Database")
+                        conn_display.commit()
+
+                    # active alarm
+                    if sound_alarm == 1:
+                        print("[INFO]-- Sound")
+                        sound_file = "./sound_alarm/police.mp3"
+                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                    elif light_alarm == 1:
+                        print("[INFO]-- Light")
+                    else:
+                        print("[INFO]-- Sound and light")
+                        sound_file = "./sound_alarm/police.mp3"
+                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
+
                 # check setting time (TO) for STOP
                 information2_time = datetime.datetime.now()
                 # print("Time2:", information2_time)
-                if set_working_time_flag:
+                if set_working_time_flag and to_time_hour is not None and to_time_minute is not None:
                     if (int(information2_time.hour) >= int(to_time_hour)) \
                             and (int(information2_time.minute) >= int(to_time_minute)):
                         print("[INFO] All threads are stopped because of out of time (Setting time)")
@@ -462,7 +446,7 @@ def plotting(name_of_figure,
     if check_day == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
                 f"and Year = {year_input} " \
-                f"and Day = {day_input}" \
+                f"and Day = {day_input} " \
                 f"and Month = {month_input}"
         c.execute(query)
         return_data = c.fetchall()
@@ -483,7 +467,7 @@ def plotting(name_of_figure,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index - 0.2, value, str(value), color=color, size='xx-large')
+                plt.text(index - 0.2, value, str(value), color=color, size='large')
         if os.path.exists("./figure/" + name_of_figure):
             os.remove("./figure/" + name_of_figure)
         plt.savefig("./figure/" + name_of_figure)
@@ -515,7 +499,7 @@ def plotting(name_of_figure,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index - 0.3, value, str(value), color=color, size='xx-large')
+                plt.text(index - 0.3, value, str(value), color=color, size='large')
         if os.path.exists("./figure/" + name_of_figure):
             os.remove("./figure/" + name_of_figure)
         plt.savefig("./figure/" + name_of_figure)
@@ -541,7 +525,7 @@ def plotting(name_of_figure,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index - 0.2, value, str(value), color=color, size='xx-large')
+                plt.text(index - 0.2, value, str(value), color=color, size='large')
         if os.path.exists("./figure/" + name_of_figure):
             os.remove("./figure/" + name_of_figure)
         plt.savefig("./figure/" + name_of_figure)
@@ -631,7 +615,6 @@ def input_region_and_counting():
         config_file, \
         draw_region_points, \
         draw_region_flag, \
-        default_counting_points, \
         draw_count_flag, \
         draw_counting_points, \
         extra_pixels
@@ -1315,25 +1298,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         save(self.settings)
         super().closeEvent(event)
-
-
-# def app():
-#     print("(***)--- Running APP threading")
-#     import sys
-#
-#     app = QtWidgets.QApplication(sys.argv)
-#     QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
-#     QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
-#     QtCore.QCoreApplication.setApplicationName("MyApp")
-#     w = MainWindow()
-#     w.show()
-#     app.exec_()
-#     # sys.exit(app.exec_())
-#
-#
-# def app_threading():
-#     t = threading.Thread(target=app, args=[])
-#     t.start()
 
 
 if __name__ == '__main__':

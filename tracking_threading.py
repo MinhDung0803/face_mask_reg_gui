@@ -188,7 +188,7 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
         list_counting_dictionaries.append([{'Person': 0, 'None face-mask': 0}])
 
 
-    print("------------------------------------------------- list_closed_queue = ", list_closed_queue)
+    # print("------------------------------------------------- list_closed_queue = ", list_closed_queue)
 
     list_tracker = [fast_tracker.FastTracker(camera_index=cam_index) for cam_index in range(num_cam)]
 
@@ -205,7 +205,7 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
 
             if (command == "stop"):
                 wait_stop.wait()
-                print("(4)--- Stoped Tracking_threading")
+                print("(3)--- Stoped Tracking_threading")
                 return
             elif (command == "pause/unpause"):
                 pausing = not pausing

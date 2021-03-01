@@ -298,7 +298,7 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
                 event_queue3.put("stop")
                 event_queue4.put("stop")
 
-                print("Face Mask threading is waitting to stop")
+                print("[INFO]-- Face Mask threading is waitting to stop")
                 wait_stop.wait()
                 print("(0)--- Stoped Face Mask threading")
                 return
@@ -371,8 +371,9 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
                             show_box = [int(bbox[0] * up_scale), int(bbox[1] * up_scale), int(bbox[2] * up_scale),
                                         int(bbox[3] * up_scale)]
 
-                            cv2.rectangle(frame_ori, (show_box[0], show_box[1]), (show_box[2], show_box[3]), color,
-                                          bbox_thick)
+                            # OLD
+                            # cv2.rectangle(frame_ori, (show_box[0], show_box[1]), (show_box[2], show_box[3]), color,
+                            #               bbox_thick)
 
                             # -----
                             # box_size = str(int((bbox[2] - bbox[0]) * up_scale)) + 'x' + str(
@@ -470,8 +471,8 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
 
         if is_closed_all(list_closed_cam):
 
-            print(" Visualization speed Ave: ", count / (sum_time), "fps")
-            print('Face mask threding waiting for stop')
+            print("[INFO]-- Visualization speed Ave: ", count / (sum_time), "fps")
+            print('[INFO]-- Face mask threding waiting for stop')
             wait_stop.wait()
 
         elif (have_no_job):

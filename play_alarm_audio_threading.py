@@ -4,6 +4,7 @@ import threading
 
 
 def play_audio(file):
+    print("[INFO]-- Playing sound alarm threading is running")
     sound = AudioSegment.from_file(file)
     # play the file
     play(sound)

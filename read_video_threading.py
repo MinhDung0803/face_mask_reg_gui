@@ -68,7 +68,7 @@ def read_video(list_filename, list_num_framedrop, list_frame_image_buffer, no_jo
 
             if (command == "stop"):
                 release_all_video_capture(list_video_capture, list_released_cam)
-                print("Read_video_threading is waitting to stop")
+                print("[INFO]-- Read_video_threading is waitting to stop")
                 wait_stop.wait()
                 print("(1)--- Stoped Read_video_threading")
                 return
@@ -117,7 +117,7 @@ def read_video(list_filename, list_num_framedrop, list_frame_image_buffer, no_jo
                 if ret != True:
 
                     print("@" * 80)
-                    print("Camera {} capture stopped".format(cam_index))
+                    print("[INFO]-- Camera {} capture stopped".format(cam_index))
 
                     read_unsuccessful_count += 1
 
@@ -166,7 +166,7 @@ def read_video(list_filename, list_num_framedrop, list_frame_image_buffer, no_jo
 
         if is_released_all(list_released_cam):
 
-            print('Read-Video waiting for stop')
+            print('[INFO]-- Read-Video waiting for stop')
             wait_stop.wait()
             return    
         elif (have_no_job):

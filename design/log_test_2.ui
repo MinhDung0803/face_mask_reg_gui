@@ -137,7 +137,7 @@ p, li { white-space: pre-wrap; }
         <string>Path</string>
        </property>
       </widget>
-      <widget class="QPushButton" name="apply_camera_source">
+      <widget class="QPushButton" name="apply">
        <property name="geometry">
         <rect>
          <x>550</x>
