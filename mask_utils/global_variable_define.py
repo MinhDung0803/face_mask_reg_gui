@@ -87,7 +87,7 @@ def set_folder_save_video_face_data(save_videos_folder_list, save_faces_folder_l
     for folder in save_faces_folder_list:
         new_folder = os.path.join(folder, TIME_NAME)
         time_face_save_folder_list.append(new_folder)
-        print("new_folder : ", new_folder)
+        # print("new_folder : ", new_folder)
         if (os.path.exists(new_folder) is not True):
             os.mkdir(new_folder)
 

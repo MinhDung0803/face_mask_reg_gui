@@ -49,7 +49,7 @@ def init():
     set_file_count()
     current_file_name_list = get_current_file_name_list()
 
-    print(" cam_id_to_index_dic = ", cam_id_to_index_dic)
+    print("[INFO]-- Cam_id_to_index_dic = ", cam_id_to_index_dic)
 
 # current_file_list = None
 
@@ -347,12 +347,13 @@ def write_body_to_file(item_list):
 
 
 def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
+
     print("(4)--- Running export_data_threading")
 
     if not face_detection_notify_flag:
         init()
 
-    print("export_data init oke")
+    print("[INFO]-- Export_data __init__ oke")
 
     pausing = False
     stop = False
@@ -371,15 +372,15 @@ def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
 
                     write_to_file(item_list)
 
-                print("export_data is waitting to stop")
+                print("[INFO]-- Export_data is waitting to stop")
 
                 wait_stop.wait()
-                print("(5)--- Stoped export_data_threading")
+                print("(4)--- Stoped Export_data_threading")
                 return
             elif (command == "pause/unpause"):
                 pausing = not pausing
                 if (pausing):
-                    print("Tracking Threading is pausing")
+                    print("[INFO]-- Export_data_threading is pausing")
 
         if pausing:
             time.sleep(no_job_sleep_time)
@@ -393,7 +394,7 @@ def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
                 if export_case == gd.Export_Case.stopped_command:
                     stop = True
                     print("@"*160)
-                    print("export_case == gd.Export_Case.stopped_command ")
+                    print("[INFO]-- export_case == gd.Export_Case.stopped_command ")
                 else:
                     item_list.append(data)
 
@@ -401,11 +402,11 @@ def export_data(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
 
         time.sleep(no_job_sleep_time)
 
-    print('Export waiting for stop')
+    print('[INFO]-- Export waiting for stop')
 
     wait_stop.wait()
 
-    print("(4)--- Stoped export_data_threading")
+    print("(4)--- Stoped Export_data_threading")
 
 
 def export_data_by_threading(export_data_buffer, no_job_sleep_time, event_queue, wait_stop):
