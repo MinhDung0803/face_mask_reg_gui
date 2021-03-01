@@ -140,4 +140,3 @@ if __name__ == "__main__":
     # Input an existing wav filename
     wavFile = "./sound_alarm/police.mp3"
     play_audio_by_threading(wavFile)
-

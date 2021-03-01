@@ -19,11 +19,10 @@ from mask_utils import global_variable_define as gd
 import play_alarm_audio_threading
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
-
 # variables
-path = None
 name = None
 camera_name_input_1 = ""
 camera_name_input_2 = ""
@@ -37,32 +36,44 @@ sound_alarm = 0
 both_alarm = 0
 draw_region_points = []
 draw_region_points_no_scale = []
+draw_counting_no_scale = []
 extra_pixels = 10  # for default points
-scale = 3
-# default_region_points = [(0 + extra_pixels, 0 + extra_pixels),(width - extra_pixels, 0 + extra_pixels),
-#                          (width - extra_pixels, height - extra_pixels),(0 + extra_pixels, height - extra_pixels)]
+scale = 3  # for drawing, display drawing and for tracking
 draw_region_flag = False
 draw_counting_points = []
 default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 trigger_stop = 0
+set_working_time_flag = False
+# from
+from_time_hour = None
+from_time_minute = None
+# to
+to_time_hour = None
+to_time_minute = None
 
 # config_file
+# ----- KEY
 config_file = "./configs/all_cameras.yml"
 
 
+# ----- KEY
+
+
 def create_default_region(w_in, h_in, extra_pixels_in):
-    result = [0 + extra_pixels_in, 0 + extra_pixels_in, w_in - extra_pixels_in, 0 + extra_pixels_in, w_in - extra_pixels_in,
+    result = [0 + extra_pixels_in, 0 + extra_pixels_in, w_in - extra_pixels_in, 0 + extra_pixels_in,
+              w_in - extra_pixels_in,
               h_in - extra_pixels_in, 0 + extra_pixels_in, h_in - extra_pixels_in]
     return result
 
 
 def create_default_counting_line(w_in, h_in, extra_pixels_in):
-    result = [0+extra_pixels_in, int(h_in / 2), w_in-extra_pixels_in, int(h_in / 2)]
+    result = [0 + extra_pixels_in, int(h_in / 2), w_in - extra_pixels_in, int(h_in / 2)]
     return result
 
+
 def create_direction_point(w_in, h_in):
-    result = [int(w_in/2), int(h_in/2)+50]
+    result = [int(w_in / 2), int(h_in / 2) + 50]
     return result
 
 
@@ -75,25 +86,17 @@ class Thread(QtCore.QThread):
         self.display_no_face_mask_counting = display_no_face_mask_counting
 
     def run(self):
-        global count, \
-            height, \
-            width, \
-            config_file, \
-            trigger_stop, \
-            count, \
-            light_alarm, \
-            sound_alarm, \
-            both_alarm, \
-            name
+        global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
+            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute
 
-        # connect to sql database
-        conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
-        # c = conn.cursor()
+        # # connect to sql database
+        conn_display = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+        c_display = conn_display.cursor()
 
         # run mode variable
         self._go = True
 
-        # get infor from config_file
+        # get information from config_file
         yaml.warnings({'YAMLLoadWarning': False})
         with open(config_file, 'r') as fs:
             config = yaml.load(fs)
@@ -116,7 +119,7 @@ class Thread(QtCore.QThread):
         for cam_index in range(num_cam):
             width1, height1, fps_video1 = face_mask_threading.get_info_video(input_video_list[cam_index])
             video_infor_list.append([width1, height1, fps_video1])
-            if (max_fps < fps_video1):
+            if max_fps < fps_video1:
                 max_fps = fps_video1
 
         no_job_sleep_time = (1 / max_fps) / 10
@@ -139,7 +142,7 @@ class Thread(QtCore.QThread):
         event_count = 0
 
         while self._go:
-            if path is not None:
+            if os.path.exists(config_file):
                 if trigger_stop == 1:
                     forward_message.put("stop")
                     trigger_stop = 0
@@ -149,7 +152,7 @@ class Thread(QtCore.QThread):
                 # get information form the queue
                 for cam_index in range(num_cam):
                     face_mask_output_data = face_mask_buffer[cam_index]
-                    if face_mask_output_data.empty() == False:
+                    if not face_mask_output_data.empty():
                         data = face_mask_output_data.get()
 
                         ind = data[0]
@@ -163,43 +166,70 @@ class Thread(QtCore.QThread):
                             self.display_no_face_mask_counting.setText(str(event_count))
                             if event_count < count:
                                 count = event_count
+
                                 # update display_no_face_mask_counting
                                 self.display_no_face_mask_counting.setText(str(count))
+
                                 # insert data into database when detect new no-face-mask person
-                                data = datetime.datetime.now()
-                                data_form = {"Camera_name": name,
-                                             "Minute": data.minute,
-                                             "Hour": data.hour,
-                                             "Day": data.day,
-                                             "Month": data.month,
-                                             "Year": data.year}
-                                data_form_add = pd.DataFrame.from_dict([data_form])
-                                data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
-                                conn.commit()
-                                # active alarm
-                                if sound_alarm == 1 or both_alarm == 1:
-                                    print("sound")
-                                elif light_alarm == 1 or both_alarm ==1:
-                                    print("light")
+                                # AND also check check setting time status
+                                if set_working_time_flag:
+                                    # check setting time (FROM)
+                                    information1_time = datetime.datetime.now()
+                                    print("Time1:", information1_time)
+                                    if (int(information1_time.hour) >= int(from_time_hour)) \
+                                            and (int(information1_time.minute) >= int(from_time_minute)):
+                                        data = datetime.datetime.now()
+                                        data_form = {"Camera_name": name,
+                                                     "Minute": data.minute,
+                                                     "Hour": data.hour,
+                                                     "Day": data.day,
+                                                     "Month": data.month,
+                                                     "Year": data.year}
+                                        data_form_add = pd.DataFrame.from_dict([data_form])
+                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                        conn_display.commit()
                                 else:
-                                    print("sound and light")
+                                    data = datetime.datetime.now()
+                                    data_form = {"Camera_name": name,
+                                                 "Minute": data.minute,
+                                                 "Hour": data.hour,
+                                                 "Day": data.day,
+                                                 "Month": data.month,
+                                                 "Year": data.year}
+                                    data_form_add = pd.DataFrame.from_dict([data_form])
+                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                    conn_display.commit()
 
-                            if sound_alarm == 1:
-                                sound_file = "./sound_alarm/police.mp3"
-                                play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                                # print("check")
-                                # data = datetime.datetime.now()
-                                # data_form = {"Camera_name": name,
-                                #              "Minute": data.minute,
-                                #              "Hour": data.hour,
-                                #              "Day": data.day,
-                                #              "Month": data.month,
-                                #              "Year": data.year}
-                                # data_form_add = pd.DataFrame.from_dict([data_form])
-                                # print(data_form_add)
-                                # data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
-                                # conn.commit()
+                                # active alarm
+                                if sound_alarm == 1:
+                                    print("[INFO] sound")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                elif light_alarm == 1:
+                                    print("[INFO] light")
+                                else:
+                                    print("[INFO] sound and light")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
 
+                            # # test function
+                            # if sound_alarm == 1:
+                            #     # sound_file = "./sound_alarm/police.mp3"
+                            #     # play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                            #     print("check")
+                            #     data = datetime.datetime.now()
+                            #     data_form = {"Camera_name": name,
+                            #                  "Minute": data.minute,
+                            #                  "Hour": data.hour,
+                            #                  "Day": data.day,
+                            #                  "Month": data.month,
+                            #                  "Year": data.year}
+                            #     data_form_add = pd.DataFrame.from_dict([data_form])
+                            #     print(data_form_add)
+                            #     data_form_add.to_sql('DATA', conn, if_exists='append', index=False)
+                            #     conn.commit()
+
+                            # display on APP
                             result_frame = cv2.resize(frame_ori, (width, height))
                             rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
                             h_result_frame, w_result_frame, ch = rgbImage.shape
@@ -212,31 +242,52 @@ class Thread(QtCore.QThread):
                     else:
                         time.sleep(no_job_sleep_time)
 
+                # check setting time (TO) for STOP
+                information2_time = datetime.datetime.now()
+                # print("Time2:", information2_time)
+                if set_working_time_flag:
+                    if (int(information2_time.hour) >= int(to_time_hour)) \
+                            and (int(information2_time.minute) >= int(to_time_minute)):
+                        print("[INFO] All threads are stopped because of out of time (Setting time)")
+                        forward_message.put("stop")
+                        trigger_stop = 0
+                        time.sleep(1)
+                        self.stop_thread()
+
             else:
-                check_input_frame()
-                # time.sleep(0.5)
+                check_config_file()
+                time.sleep(0.5)
 
     def stop_thread(self):
-        global path, \
-            draw_region_flag, \
+        global draw_region_flag, \
             draw_count_flag, \
             draw_counting_points, \
-            draw_region_points
+            draw_region_points, \
+            draw_counting_no_scale, \
+            draw_region_points_no_scale, \
+            set_working_time_flag, \
+            from_time_hour, \
+            from_time_minute, \
+            to_time_hour, \
+            to_time_minute
 
         self._go = False
-        path = None
         draw_region_flag = False
         draw_count_flag = False
         draw_counting_points = []
         draw_region_points = []
-        # time.sleep(1)
-        # exit()
+        draw_region_points_no_scale = []
+        draw_counting_no_scale = []
+        set_working_time_flag = True
+        from_time_hour = None
+        from_time_minute = None
+        to_time_hour = None
+        to_time_minute = None
 
 
 def close_window():
     global trigger_stop
     trigger_stop = 1
-    # th.stop_thread()
 
 
 def camera_source_alarm():
@@ -260,13 +311,11 @@ def check_path_for_webcam():
     alert.exec_()
 
 
-def check_input_frame():
+def check_config_file():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Read Camera Warning")
-    alert.setText('No video input, please check again!')
+    alert.setWindowTitle("Loading config file")
+    alert.setText('There are no config file, please check again!')
     alert.exec_()
-    th.stop_thread()
-    time.sleep(1)
 
 
 def check_camera_name():
@@ -283,90 +332,121 @@ def check_camera_name_plotting():
     alert.exec_()
 
 
+def check_setting_time():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Setting Time Warning")
+    alert.setText('Wrong time information has been input, please check again!')
+    alert.exec_()
+
+
 def shape_selection_for_region(event, x, y, flags, param):
-    global draw_region_points, scale, draw_region_points_no_scale
+    global draw_region_points, scale, draw_region_points_no_scale, image_region
     if event == cv2.EVENT_LBUTTONDOWN:
         ref_point = (x, y)
         # with scale
-        draw_region_points.append(x*scale)
-        draw_region_points.append(y*scale)
+        draw_region_points.append(x * scale)
+        draw_region_points.append(y * scale)
         # with no scale
         draw_region_points_no_scale.append(x)
         draw_region_points_no_scale.append(y)
-
-        cv2.circle(image, (ref_point[0], ref_point[1]), 4, (0, 0, 255), -2)
-        cv2.imshow("Draw Tracking Region", image)
+        cv2.circle(image_region, (ref_point[0], ref_point[1]), 4, (0, 0, 255), -2)
+        cv2.imshow("Draw Tracking Region", image_region)
 
 
 def shape_selection_for_counting(event, x, y, flags, param):
-    global ref_point_c, draw_counting_points, scale
+    global draw_counting_points, scale, image_counting
     if event == cv2.EVENT_LBUTTONDOWN:
         ref_point_c = (x, y)
         # with scale
         draw_counting_points.append(x * scale)
         draw_counting_points.append(y * scale)
-
-        cv2.circle(image, (ref_point_c[0], ref_point_c[1]), 4, (0, 255, 0), -2)
-        cv2.imshow("Draw Counting Region", image)
+        # without scale (for drawing)
+        draw_counting_no_scale.append(x)
+        draw_counting_no_scale.append(y)
+        cv2.circle(image_counting, (ref_point_c[0], ref_point_c[1]), 4, (0, 255, 0), -2)
+        cv2.imshow("Draw Counting Region", image_counting)
 
 
 def draw_region():
-    global path, width, height, draw_region_points, image, draw_region_flag, scale, draw_region_points_no_scale
+    global width, height, draw_region_points, draw_region_flag, scale, draw_region_points_no_scale, image_region
     draw_region_flag = True
+    # load yaml config file
+    yaml.warnings({'YAMLLoadWarning': False})
+    with open(config_file, 'r') as fs:
+        config = yaml.load(fs)
+    cam_config = config["input"]["cam_config"]
+
+    # open json file
+    with open(cam_config) as json_file:
+        json_data = json.load(json_file)
+    json_file.close()
+    # get camera's path
+    input_path = json_data["data"][0]["url"]
     # read and write original image
-    cap = cv2.VideoCapture(path)
+    cap = cv2.VideoCapture(input_path)
+    # get width, height of camera
     w = int(cap.get(3))
     h = int(cap.get(4))
     ret, frame = cap.read()
-    frame = cv2.resize(frame, (int(w/scale), int(h/scale)))
+    frame = cv2.resize(frame, (int(w / scale), int(h / scale)))
     if ret:
+        if os.path.exists("./draw/original_image.jpg"):
+            os.remove("./draw/original_image.jpg")
         cv2.imwrite("./draw/original_image.jpg", frame)
         # draw on original image and write when done
-        image = cv2.imread("./draw/original_image.jpg")
-        clone = image.copy()
+        image_region = cv2.imread("./draw/original_image.jpg")
+        # clone = image.copy()
         cv2.namedWindow("Draw Tracking Region")
         cv2.setMouseCallback("Draw Tracking Region", shape_selection_for_region)
         while True:
-            cv2.imshow("Draw Tracking Region", image)
+            cv2.imshow("Draw Tracking Region", image_region)
             key = cv2.waitKey(1)
             if key == 32:
-                image = clone.copy()
+                # image = clone.copy()
                 draw_region_points = []
             elif key == 13:
                 break
         for i in range(0, len(draw_region_points_no_scale), 2):
             if i + 3 > len(draw_region_points_no_scale):
-                cv2.line(image, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
                          (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
             else:
-                cv2.line(image, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
                          (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
-
-    cv2.imwrite('./draw/draw_region_image.jpg', image)
+    if os.path.exists('./draw/draw_region_image.jpg'):
+        os.remove('./draw/draw_region_image.jpg')
+    cv2.imwrite('./draw/draw_region_image.jpg', image_region)
     cap.release()
     cv2.destroyAllWindows()
 
 
 def draw_counting():
-    global path, width, height, draw_counting_points, image, draw_count_flag
+    global width, height, draw_counting_points, draw_count_flag, image_counting
     draw_count_flag = True
-    image = cv2.imread("./draw/draw_region_image.jpg")
-    clone = image.copy()
+    image_counting = cv2.imread("./draw/draw_region_image.jpg")
     cv2.namedWindow("Draw Counting Region")
     cv2.setMouseCallback("Draw Counting Region", shape_selection_for_counting)
     while True:
-        cv2.imshow("Draw Counting Region", image)
+        cv2.imshow("Draw Counting Region", image_counting)
         key = cv2.waitKey(1)
         if key == 32:
-            image = clone.copy()
             draw_counting_points = []
         elif key == 13:
             break
-    cv2.imwrite('./draw/draw_counting_image.jpg', image)
+    for i in range(0, len(draw_counting_no_scale), 2):
+        if i + 3 > len(draw_counting_no_scale):
+            cv2.line(image_counting, (draw_counting_no_scale[i], draw_counting_no_scale[i + 1]),
+                     (draw_counting_no_scale[0], draw_counting_no_scale[1]), (0, 255, 0), 1)
+        else:
+            cv2.line(image_counting, (draw_counting_no_scale[i], draw_counting_no_scale[i + 1]),
+                     (draw_counting_no_scale[i + 2], draw_counting_no_scale[i + 3]), (0, 255, 0), 1)
+    if os.path.exists('./draw/draw_counting_image.jpg'):
+        os.remove('./draw/draw_counting_image.jpg')
+    cv2.imwrite('./draw/draw_counting_image.jpg', image_counting)
     cv2.destroyAllWindows()
 
 
-def plotting(name,
+def plotting(name_of_figure,
              color,
              camera_name_input,
              day_input,
@@ -403,10 +483,10 @@ def plotting(name,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index-0.2, value, str(value), color=color, size='xx-large')
-        if os.path.exists("./figure/" + name):
-            os.remove("./figure/" + name)
-        plt.savefig("./figure/" + name)
+                plt.text(index - 0.2, value, str(value), color=color, size='xx-large')
+        if os.path.exists("./figure/" + name_of_figure):
+            os.remove("./figure/" + name_of_figure)
+        plt.savefig("./figure/" + name_of_figure)
         plt.close()
         time.sleep(0.5)
     elif check_month == 1:
@@ -436,9 +516,9 @@ def plotting(name,
         for index, value in enumerate(y):
             if value != 0:
                 plt.text(index - 0.3, value, str(value), color=color, size='xx-large')
-        if os.path.exists("./figure/" + name):
-            os.remove("./figure/" + name)
-        plt.savefig("./figure/" + name)
+        if os.path.exists("./figure/" + name_of_figure):
+            os.remove("./figure/" + name_of_figure)
+        plt.savefig("./figure/" + name_of_figure)
         plt.close()
         time.sleep(0.5)
     elif check_year == 1:
@@ -461,10 +541,10 @@ def plotting(name,
         plt.ylabel('Number of No Face-Mask')
         for index, value in enumerate(y):
             if value != 0:
-                plt.text(index-0.2, value, str(value), color=color, size='xx-large')
-        if os.path.exists("./figure/" + name):
-            os.remove("./figure/" + name)
-        plt.savefig("./figure/" + name)
+                plt.text(index - 0.2, value, str(value), color=color, size='xx-large')
+        if os.path.exists("./figure/" + name_of_figure):
+            os.remove("./figure/" + name_of_figure)
+        plt.savefig("./figure/" + name_of_figure)
         plt.close()
         time.sleep(0.5)
     # commit database
@@ -503,54 +583,110 @@ def save(settings):
 
 
 def export_data(camera_name_input,
-               day_input,
-               month_input,
-               year_input,
-               check_day,
-               check_month,
-               check_year):
+                day_input,
+                month_input,
+                year_input,
+                check_day,
+                check_month,
+                check_year):
     # connect to sql database
-    conn = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
-    c = conn.cursor()
+    conn_export = sqlite3.connect('./database/Face_Mask_Recognition_DataBase.db')
+    c_export = conn_export.cursor()
 
     if check_day == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
                 f"and Year = {year_input} " \
                 f"and Day = {day_input} " \
                 f"and Month = {month_input} "
-        c.execute(query)
-        return_data = c.fetchall()
+        c_export.execute(query)
+        return_data = c_export.fetchall()
         df = pd.DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
-        name = str(camera_name_input)+"-"\
-               +str(day_input)+"."\
-               +str(month_input)+"."\
-               +str(year_input)+"-"\
-               +"NoFaceMaskData.csv"
-        df.to_csv('./export_data/' + name)
+        file_name_export = str(camera_name_input) + "-" + str(day_input) + "." + str(month_input) + "." \
+                           + str(year_input) + "-" + "NoFaceMaskData.csv"
+        df.to_csv('./export_data/' + file_name_export)
     elif check_month == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
                 f"and Year = {year_input} " \
                 f"and Month = {month_input} "
-        c.execute(query)
-        return_data = c.fetchall()
+        c_export.execute(query)
+        return_data = c_export.fetchall()
         df = pd.DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
-        name = str(camera_name_input) + "-" \
-               + str(month_input) + "." \
-               + str(year_input) + "-" \
-               + "NoFaceMaskData.csv"
-        df.to_csv('./export_data/' + name)
+        file_name_export = str(camera_name_input) + "-" + str(month_input) + "." + str(year_input) + "-" \
+                           + "NoFaceMaskData.csv"
+        df.to_csv('./export_data/' + file_name_export)
     elif check_year == 1:
         query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' " \
                 f"and Year = {year_input} "
-        c.execute(query)
-        return_data = c.fetchall()
+        c_export.execute(query)
+        return_data = c_export.fetchall()
         df = pd.DataFrame(return_data, columns=["Camera name", "Minute", "Hour", "Day", "Month", "Year"])
-        name = str(camera_name_input) + "-" \
-               + str(year_input) + "-" \
-               + "NoFaceMaskData.csv"
-        df.to_csv('./export_data/' + name)
+        file_name_export = str(camera_name_input) + "-" + str(year_input) + "-" + "NoFaceMaskData.csv"
+        df.to_csv('./export_data/' + file_name_export)
     # commit data base
-    conn.commit()
+    conn_export.commit()
+
+
+def input_region_and_counting():
+    global name, \
+        config_file, \
+        draw_region_points, \
+        draw_region_flag, \
+        default_counting_points, \
+        draw_count_flag, \
+        draw_counting_points, \
+        extra_pixels
+    if os.path.exists(config_file):
+        # load yaml config file
+        yaml.warnings({'YAMLLoadWarning': False})
+        with open(config_file, 'r') as fs:
+            config = yaml.load(fs)
+        cam_config = config["input"]["cam_config"]
+
+        # open json file
+        with open(cam_config) as json_file:
+            json_data = json.load(json_file)
+        json_file.close()
+
+        path_read = json_data["data"][0]["url"]
+
+        # ----- get width, height of input
+        cap = cv2.VideoCapture(path_read)
+        w = int(cap.get(3))
+        h = int(cap.get(4))
+        cap.release()
+        # -----
+
+        # ----- get tracking region
+        if draw_region_flag:
+            final_draw_region = draw_region_points
+        else:
+            final_draw_region = create_default_region(w, h, extra_pixels)
+        # print("final_draw_region: ", final_draw_region)
+
+        # ----- get counting line
+        if draw_count_flag:
+            final_counting_line = draw_counting_points
+            final_direction_point = [int(final_counting_line[2] / 2), final_counting_line[1] + 100]
+        else:
+            final_counting_line = create_default_counting_line(w, h, extra_pixels)
+            final_direction_point = create_direction_point(w, h)
+
+        # ----- update json file
+
+        # update information in json file
+        json_data["data"][0]["tracking_regions"][0]["points"] = final_draw_region
+        json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["points"] = \
+            final_counting_line
+        json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["direction_point"] = \
+            final_direction_point
+        json_data["data"][0]["tracking_regions"][0]["id_show_point"] = final_direction_point
+
+        # write json file
+        with open(json_file.name, "w") as outfile:
+            json.dump(json_data, outfile)
+        outfile.close()
+        # -----
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -653,23 +789,28 @@ class Ui_MainWindow(object):
         font.setBold(True)
         self.start = QtWidgets.QPushButton(self.tab)
         self.start.setFont(font)
-        self.start.setGeometry(QtCore.QRect(670, 450, 81, 71))
+        self.start.setGeometry(QtCore.QRect(660, 540, 101, 71))
         self.start.setObjectName("start")
 
         self.draw_region = QtWidgets.QPushButton(self.tab)
         self.draw_region.setFont(font)
-        self.draw_region.setGeometry(QtCore.QRect(760, 450, 111, 71))
+        self.draw_region.setGeometry(QtCore.QRect(660, 440, 121, 41))
         self.draw_region.setObjectName("draw_region")
 
         self.stop = QtWidgets.QPushButton(self.tab)
         self.stop.setFont(font)
-        self.stop.setGeometry(QtCore.QRect(670, 540, 81, 71))
+        self.stop.setGeometry(QtCore.QRect(780, 540, 101, 71))
         self.stop.setObjectName("stop")
 
         self.draw_count = QtWidgets.QPushButton(self.tab)
         self.draw_count.setFont(font)
-        self.draw_count.setGeometry(QtCore.QRect(760, 540, 111, 71))
+        self.draw_count.setGeometry(QtCore.QRect(660, 490, 121, 31))
         self.draw_count.setObjectName("draw_count")
+
+        self.apply_drawing = QtWidgets.QPushButton(self.tab)
+        self.apply_drawing.setFont(font)
+        self.apply_drawing.setGeometry(QtCore.QRect(800, 450, 81, 61))
+        self.apply_drawing.setObjectName("apply_drawing")
         self.tabWidget.addTab(self.tab, "")
 
         self.tab_2 = QtWidgets.QWidget()
@@ -790,8 +931,8 @@ class Ui_MainWindow(object):
         self.display_ploting_2.setObjectName("display_ploting_2")
         self.tabWidget.addTab(self.tab_2, "")
 
-        ######
-        ## events
+        # -----
+        # EVENTS
         # get camera name and plot - 1
         self.plot1.clicked.connect(self.display_plotting_figure_1)
         self.button_camera_name_1.clicked.connect(self.get_camera_name_1)
@@ -802,8 +943,10 @@ class Ui_MainWindow(object):
         self.radioButton_light_option.clicked.connect(self.check_alarm_option)
         self.radioButton_sound_option.clicked.connect(self.check_alarm_option)
         self.radioButton_light_and_sound_option.clicked.connect(self.check_alarm_option)
-        # get camera source path
-        self.apply.clicked.connect(self.get_path)
+        # get camera source path and inset into config file
+        self.apply.clicked.connect(self.input_camera_source_path_and_name)
+        # get camera region and counting if draw or default region and counting. Insert them into config file
+        self.apply_drawing.clicked.connect(input_region_and_counting)
         # start video
         self.start.clicked.connect(self.video)
         # stop video
@@ -816,10 +959,12 @@ class Ui_MainWindow(object):
         self.export_2.clicked.connect(self.call_export_data_2)
         # export data - 1
         self.export_1.clicked.connect(self.call_export_data_1)
+        # set working time
+        self.pushButton_set_time.clicked.connect(self.get_time_setting)
         # call display video
         global th
         th = Thread(MainWindow, self.display_no_face_mask_counting)
-        #####
+        # -----
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
@@ -837,15 +982,15 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def region(self):
-        global path
-        if path is None or len(path) == 0:
+        global config_file
+        if not os.path.exists(config_file):
             camera_source_alarm()
         else:
             draw_region()
 
     def counting(self):
-        global path
-        if path is None or len(path) == 0:
+        global config_file
+        if not os.path.exists(config_file):
             camera_source_alarm()
         else:
             draw_counting()
@@ -864,16 +1009,11 @@ class Ui_MainWindow(object):
             light_alarm = 0
             sound_alarm = 0
             both_alarm = 1
-        # check alarm option status
-        # self.display_no_face_mask_counting.setText(str(light_alarm)+" "+
-        #                                            str(sound_alarm)+" "+
-        #                                            str(both_alarm))
-        return light_alarm, sound_alarm, both_alarm
 
     def video(self):
-        global path, count
+        global config_file, count
         self.display_no_face_mask_counting.setText(str(count))
-        if path is None or len(path) == 0:
+        if not os.path.exists(config_file):
             camera_source_alarm()
         else:
             self.display_video.resize(640, 480)
@@ -883,21 +1023,13 @@ class Ui_MainWindow(object):
     def setImage(self, image):
         self.display_video.setPixmap(QtGui.QPixmap.fromImage(image))
 
-    def get_path(self):
-        global path, \
-            name, \
-            config_file, \
-            width, \
-            height,\
-            draw_region_points, \
-            draw_region_flag, \
-            default_counting_points, \
-            draw_count_flag, \
-            draw_counting_points, \
-            extra_pixels
-
+    def input_camera_source_path_and_name(self):
+        global name, config_file
+        get_path = None
+        camera_name = None
         data_path = self.source_path.text()
         camera_name_source = self.source_input_camera_name.text()
+
         # check for IP camera path
         if len(camera_name_source) == 0:
             check_camera_name()
@@ -907,71 +1039,46 @@ class Ui_MainWindow(object):
             if len(data_path) < 10:
                 check_path_for_ip_camera()
             else:
-                path = data_path
-
-                # ----- get width, height of input
-                cap = cv2.VideoCapture(path)
-                w = int(cap.get(3))
-                h = int(cap.get(4))
-                cap.release()
-                # -----
-
-                # ----- get tracking region
-                if draw_region_flag:
-                    final_draw_region = draw_region_points
-                else:
-                    final_draw_region = create_default_region(w, h, extra_pixels)
-                # print("final_draw_region: ", final_draw_region)
-
-                # ----- get counting line
-                if draw_count_flag:
-                    final_counting_line = draw_counting_points
-                    final_direction_point = [int(final_counting_line[2]/2), final_counting_line[1]+100]
-                else:
-                    final_counting_line = create_default_counting_line(w, h, extra_pixels)
-                    final_direction_point = create_direction_point(w, h)
-
-                # ----- update json file
-                # load yaml config file
-                yaml.warnings({'YAMLLoadWarning': False})
-                with open(config_file, 'r') as fs:
-                    config = yaml.load(fs)
-                cam_config = config["input"]["cam_config"]
-
-                # open json file
-                with open(cam_config) as json_file:
-                    json_data = json.load(json_file)
-                json_file.close()
-
-                # update infor in json file
-                json_data["data"][0]["url"] = path
-                json_data["data"][0]["tracking_regions"][0]["points"] = final_draw_region
-                json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["points"] = \
-                    final_counting_line
-                json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["direction_point"] = \
-                    final_direction_point
-                json_data["data"][0]["tracking_regions"][0]["id_show_point"] = final_direction_point
-
-
-                # write json file
-                with open(json_file.name, "w") as outfile:
-                    json.dump(json_data, outfile)
-                # -----
+                get_path = data_path
+                camera_name = camera_name_source
 
         # check for webcam ID
-        if self.radioButton_webcam.isChecked():
+        elif self.radioButton_webcam.isChecked():
             if len(data_path) > 10:
                 check_path_for_webcam()
             else:
-                path = data_path
-        return path
+                get_path = data_path
+                camera_name = camera_name_source
+
+        if os.path.exists(config_file):
+            # ----- update json file
+            # load yaml config file
+            yaml.warnings({'YAMLLoadWarning': False})
+            with open(config_file, 'r') as fs:
+                config = yaml.load(fs)
+            cam_config = config["input"]["cam_config"]
+
+            # open json file
+            with open(cam_config) as json_file:
+                json_data = json.load(json_file)
+            json_file.close()
+
+            # update infor in json file
+            json_data["data"][0]["url"] = get_path
+            json_data["data"][0]["name"] = camera_name
+
+            # write json file
+            with open(json_file.name, "w") as outfile:
+                json.dump(json_data, outfile)
+            outfile.close()
+            # -----
 
     def get_camera_name_1(self):
         global camera_name_input_1
         camera_name_input_1 = self.input_camera_name_1.text()
 
     def display_plotting_figure_1(self):
-        global camera_name_input_1, conn, c
+        global camera_name_input_1
         if len(camera_name_input_1) == 0:
             check_camera_name_plotting()
         else:
@@ -1013,7 +1120,6 @@ class Ui_MainWindow(object):
             else:
                 self.display_ploting_1.setScaledContents(True)
                 pixmap = QtGui.QPixmap("./figure/" + name1)
-                # os.remove('./figure/figure1.png')
                 self.display_ploting_1.setPixmap(pixmap)
 
     def get_camera_name_2(self):
@@ -1021,7 +1127,7 @@ class Ui_MainWindow(object):
         camera_name_input_2 = self.input_camera_name_2.text()
 
     def display_plotting_figure_2(self):
-        global camera_name_input_2, conn, c
+        global camera_name_input_2
         if len(camera_name_input_2) == 0:
             check_camera_name_plotting()
         else:
@@ -1125,13 +1231,23 @@ class Ui_MainWindow(object):
                 check_year_2 = 1
 
             export_data(camera_name_input_2,
-                       day_input_2,
-                       month_input_2,
-                       year_input_2,
-                       check_day_2,
-                       check_month_2,
-                       check_year_2)
+                        day_input_2,
+                        month_input_2,
+                        year_input_2,
+                        check_day_2,
+                        check_month_2,
+                        check_year_2)
 
+    def get_time_setting(self):
+        global set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute
+        set_working_time_flag = True
+        # for from_time
+        from_time_hour = self.from_time.text()[:2]
+        from_time_minute = self.from_time.text()[3:]
+
+        # for to_time
+        to_time_hour = self.to_time.text()[:2]
+        to_time_minute = self.to_time.text()[3:]
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -1142,7 +1258,7 @@ class Ui_MainWindow(object):
         self.radioButton_webcam.setText(_translate("MainWindow", "Webcam"))
         self.label_5.setText(_translate("MainWindow", "Set name of camera"))
         self.label_6.setText(_translate("MainWindow", "Path"))
-        self.apply.setText(_translate("MainWindow", "APPLY"))
+        self.apply.setText(_translate("MainWindow", "INPUT"))
         self.groupBox_3.setTitle(_translate("MainWindow", "Alarm Option"))
         self.radioButton_light_option.setText(_translate("MainWindow", "Light"))
         self.radioButton_sound_option.setText(_translate("MainWindow", "Sound"))
@@ -1157,6 +1273,7 @@ class Ui_MainWindow(object):
         self.draw_region.setText(_translate("MainWindow", "DRAW REGION"))
         self.stop.setText(_translate("MainWindow", "STOP"))
         self.draw_count.setText(_translate("MainWindow", "DRAW COUNT"))
+        self.apply_drawing.setText(_translate("MainWindow", "APPLY"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "Tab 1"))
         self.display_ploting_1.setText(_translate("MainWindow", "Ploting_1"))
         self.groupBox_plot1.setTitle(_translate("MainWindow", "Setting Plot 1"))
