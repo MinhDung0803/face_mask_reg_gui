@@ -123,9 +123,9 @@ import threading
 
 def play_audio(file):
     # Input an existing wav filename
-    wavFile = "police.mp3"
+    # wavFile = "police.mp3"
     # load the file into pydub
-    sound = AudioSegment.from_file(wavFile)
+    sound = AudioSegment.from_file(file)
     print("Playing wav file...")
     # play the file
     play(sound)
