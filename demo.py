@@ -161,6 +161,57 @@ class Thread(QtCore.QThread):
                             # get number of no face mask person
                             event_count = list_count[0]["Person"]
 
+                            # event
+                            if count < event_count:
+                                count = event_count
+
+                                # update display_no_face_mask_counting
+                                self.display_no_face_mask_counting.setText(str(count))
+
+                                # insert data into database when detect new no-face-mask person
+                                # AND also check check setting time status
+                                if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
+                                    # check setting time (FROM)
+                                    information1_time = datetime.datetime.now()
+                                    print("Time1:", information1_time)
+                                    if (int(information1_time.hour) >= int(from_time_hour)) \
+                                            and (int(information1_time.minute) >= int(from_time_minute)):
+                                        data = datetime.datetime.now()
+                                        data_form = {"Camera_name": insert_name,
+                                                     "Minute": data.minute,
+                                                     "Hour": data.hour,
+                                                     "Day": data.day,
+                                                     "Month": data.month,
+                                                     "Year": data.year}
+                                        data_form_add = pd.DataFrame.from_dict([data_form])
+                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                        print("[INFO]-- Inserted data into Database")
+                                        conn_display.commit()
+                                else:
+                                    data = datetime.datetime.now()
+                                    data_form = {"Camera_name": insert_name,
+                                                 "Minute": data.minute,
+                                                 "Hour": data.hour,
+                                                 "Day": data.day,
+                                                 "Month": data.month,
+                                                 "Year": data.year}
+                                    data_form_add = pd.DataFrame.from_dict([data_form])
+                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                    print("[INFO]-- Inserted data into Database")
+                                    conn_display.commit()
+
+                                # active alarm
+                                if sound_alarm == 1:
+                                    print("[INFO]-- Sound")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                elif light_alarm == 1:
+                                    print("[INFO]-- Light")
+                                else:
+                                    print("[INFO]-- Sound and light")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+
                             # display on APP
                             result_frame = cv2.resize(frame_ori, (width, height))
                             rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
@@ -173,58 +224,6 @@ class Thread(QtCore.QThread):
 
                     else:
                         time.sleep(no_job_sleep_time)
-
-                # event
-                if count < event_count:
-                    count = event_count
-                    print("check")
-
-                    # update display_no_face_mask_counting
-                    self.display_no_face_mask_counting.setText(str(count))
-
-                    # insert data into database when detect new no-face-mask person
-                    # AND also check check setting time status
-                    if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
-                        # check setting time (FROM)
-                        information1_time = datetime.datetime.now()
-                        print("Time1:", information1_time)
-                        if (int(information1_time.hour) >= int(from_time_hour)) \
-                                and (int(information1_time.minute) >= int(from_time_minute)):
-                            data = datetime.datetime.now()
-                            data_form = {"Camera_name": insert_name,
-                                         "Minute": data.minute,
-                                         "Hour": data.hour,
-                                         "Day": data.day,
-                                         "Month": data.month,
-                                         "Year": data.year}
-                            data_form_add = pd.DataFrame.from_dict([data_form])
-                            data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                            print("[INFO]-- Inserted data into Database")
-                            conn_display.commit()
-                    else:
-                        data = datetime.datetime.now()
-                        data_form = {"Camera_name": insert_name,
-                                     "Minute": data.minute,
-                                     "Hour": data.hour,
-                                     "Day": data.day,
-                                     "Month": data.month,
-                                     "Year": data.year}
-                        data_form_add = pd.DataFrame.from_dict([data_form])
-                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                        print("[INFO]-- Inserted data into Database")
-                        conn_display.commit()
-
-                    # active alarm
-                    if sound_alarm == 1:
-                        print("[INFO]-- Sound")
-                        sound_file = "./sound_alarm/police.mp3"
-                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                    elif light_alarm == 1:
-                        print("[INFO]-- Light")
-                    else:
-                        print("[INFO]-- Sound and light")
-                        sound_file = "./sound_alarm/police.mp3"
-                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
 
                 # check setting time (TO) for STOP
                 information2_time = datetime.datetime.now()
@@ -1007,7 +1006,7 @@ class Ui_MainWindow(object):
         self.display_video.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def input_camera_source_path_and_name(self):
-        global name, config_file
+        global config_file
         get_path = None
         camera_name = None
         data_path = self.source_path.text()
@@ -1016,8 +1015,6 @@ class Ui_MainWindow(object):
         # check for IP camera path
         if len(camera_name_source) == 0:
             check_camera_name()
-        else:
-            name = camera_name_source
         if self.radioButton_ip_camera.isChecked():
             if len(data_path) < 10:
                 check_path_for_ip_camera()

@@ -745,13 +745,13 @@ class FastTracker:
             # else:
             #     colors.append((0, 0, 0))
 
-            # old
+            # old for head-body
             # if track.counted:
             #     colors.append((0, 255, 0))
             # else:
             #     colors.append((255, 255, 255))
 
-            # new
+            # new for face-mask
             if (1 in track.dic_mask_id) and (track.dic_mask_id[1] >= 3):
                 colors.append((0, 0, 255))
             elif track.counted:

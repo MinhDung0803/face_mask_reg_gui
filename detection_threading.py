@@ -99,7 +99,6 @@ def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detec
 							# head_boxes, _, head_scores, body_boxes, _, body_scores = \
 							# 	detection_module.head_and_body_detection(frame_ori, head_score_threshold=0.5,
 							# 											 body_score_threshold=0.6)
-							#
 							# bboxes = head_boxes
 							# scores = head_scores
 							# class_ids = [0]*len(bboxes)
