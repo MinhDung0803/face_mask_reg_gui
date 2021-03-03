@@ -26,7 +26,7 @@
     <property name="title">
      <string>Trạng thái hoạt động</string>
     </property>
-    <widget class="QTableWidget" name="tableWidget_2">
+    <widget class="QTableWidget" name="table">
      <property name="geometry">
       <rect>
        <x>0</x>
@@ -99,7 +99,7 @@
       </property>
      </item>
     </widget>
-    <widget class="QPushButton" name="pushButton_29">
+    <widget class="QPushButton" name="bat_dau">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -120,7 +120,7 @@
       <string>Bắt đầu</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_32">
+    <widget class="QPushButton" name="tam_dung">
      <property name="geometry">
       <rect>
        <x>110</x>
@@ -141,7 +141,7 @@
       <string>Tạm dừng</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="pushButton_30">
+    <widget class="QPushButton" name="ket_thuc">
      <property name="geometry">
       <rect>
        <x>200</x>
@@ -163,7 +163,7 @@
      </property>
     </widget>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber">
+   <widget class="QLCDNumber" name="display1">
     <property name="geometry">
      <rect>
       <x>360</x>
@@ -194,7 +194,7 @@
      <string>Tổng số mang khẩu trang</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_108">
+   <widget class="QLabel" name="output">
     <property name="geometry">
      <rect>
       <x>410</x>
@@ -213,7 +213,7 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QDateEdit" name="dateEdit">
+   <widget class="QDateEdit" name="date">
     <property name="geometry">
      <rect>
       <x>360</x>
@@ -223,7 +223,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QComboBox" name="comboBox_3">
+   <widget class="QComboBox" name="combo_box">
     <property name="geometry">
      <rect>
       <x>510</x>
@@ -248,7 +248,7 @@
      </property>
     </item>
    </widget>
-   <widget class="QCheckBox" name="checkBox">
+   <widget class="QCheckBox" name="checkBox1">
     <property name="geometry">
      <rect>
       <x>640</x>
@@ -273,7 +273,7 @@
     <property name="title">
      <string>Kết quả tổng quát</string>
     </property>
-    <widget class="QLabel" name="label_106">
+    <widget class="QLabel" name="display_vao">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -286,7 +286,7 @@
       <string>Tổng số người vào:</string>
      </property>
     </widget>
-    <widget class="QLabel" name="label_105">
+    <widget class="QLabel" name="display_khong_khau_trang">
      <property name="geometry">
       <rect>
        <x>10</x>
@@ -312,7 +312,7 @@
       <string>Tổng số mang khẩu trang:</string>
      </property>
     </widget>
-    <widget class="QLCDNumber" name="lcdNumber_2">
+    <widget class="QLCDNumber" name="display_khau_trang">
      <property name="geometry">
       <rect>
        <x>270</x>
