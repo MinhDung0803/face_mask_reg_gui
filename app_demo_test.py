@@ -9,9 +9,6 @@ import threading
 import queue
 import json
 import yaml
-import pyglet
-from pydub import AudioSegment
-from pydub.playback import play
 import datetime
 
 import face_mask_threading
@@ -40,7 +37,6 @@ extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
 draw_region_flag = False
 draw_counting_points = []
-# default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 trigger_stop = 0
 set_working_time_flag = False
@@ -347,6 +343,13 @@ def shape_selection_for_counting(event, x, y, flags, param):
         draw_counting_no_scale.append(x)
         draw_counting_no_scale.append(y)
         cv2.circle(image_counting, (ref_point_c[0], ref_point_c[1]), 4, (0, 255, 0), -2)
+        for i in range(0, len(draw_region_points_no_scale), 2):
+            if i + 3 > len(draw_region_points_no_scale):
+                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                         (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
+            else:
+                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                         (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
         cv2.imshow("Draw Counting Region", image_counting)
 
 
@@ -383,19 +386,20 @@ def draw_region():
         cv2.setMouseCallback("Draw Tracking Region", shape_selection_for_region)
         while True:
             cv2.imshow("Draw Tracking Region", image_region)
+            for i in range(0, len(draw_region_points_no_scale), 2):
+                if i + 3 > len(draw_region_points_no_scale):
+                    cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                             (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
+                else:
+                    cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                             (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
             key = cv2.waitKey(1)
             if key == 32:
                 # image = clone.copy()
                 draw_region_points = []
             elif key == 13:
                 break
-        for i in range(0, len(draw_region_points_no_scale), 2):
-            if i + 3 > len(draw_region_points_no_scale):
-                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
-                         (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
-            else:
-                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
-                         (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
+
     if os.path.exists('./draw/draw_region_image.jpg'):
         os.remove('./draw/draw_region_image.jpg')
     cv2.imwrite('./draw/draw_region_image.jpg', image_region)
