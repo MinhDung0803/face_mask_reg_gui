@@ -10,8 +10,5 @@ Run from terminal
 Conver to .py file from .ui file
 	pyuic5 -x <.ui file name> -o <.py file name>
 	
-Install pyqt
-	conda install pyqt==5.6
-	
 Install packages using requirements file
 	pip install -r requirements.txt

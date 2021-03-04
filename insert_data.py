@@ -18,7 +18,7 @@ global th, path, light_alarm, sound_alarm, both_alarm, count, conn, c
 path = None
 count = 0
 
-conn = sqlite3.connect('Face_Mask_Recognition_DataBase.db')
+conn = sqlite3.connect('./database/final_data_base.db')
 c = conn.cursor()
 
 
@@ -126,8 +126,8 @@ def add_data_db():
     print("add data")
 
     # # read data from csv file
-    fake_data = pd.read_csv('fake_data.csv')
-    print(fake_data)
+    fake_data = pd.read_csv('./data/fake_data.csv')
+    print(fake_data.type)
     fake_data.to_sql('DATA', conn, if_exists='replace', index=False)
     conn.commit()
 

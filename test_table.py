@@ -10,40 +10,6 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-w_width = 900
-w_height = 700
-
-
-def restore(settings):
-    finfo = QtCore.QFileInfo(settings.fileName())
-    if finfo.exists() and finfo.isFile():
-        for w in QtWidgets.qApp.allWidgets():
-            mo = w.metaObject()
-            if w.objectName() and not w.objectName().startswith("qt_"):
-                settings.beginGroup(w.objectName())
-                for i in range(mo.propertyCount(), mo.propertyOffset() - 1, -1):
-                    prop = mo.property(i)
-                    if prop.isWritable():
-                        name = prop.name()
-                        val = settings.value(name, w.property(name))
-                        if str(val).isdigit():
-                            val = int(val)
-                        w.setProperty(name, val)
-                settings.endGroup()
-
-
-def save(settings):
-    for w in QtWidgets.qApp.allWidgets():
-        mo = w.metaObject()
-        if w.objectName() and not w.objectName().startswith("qt_"):
-            settings.beginGroup(w.objectName())
-            for i in range(mo.propertyCount()):
-                prop = mo.property(i)
-                name = prop.name()
-                if prop.isWritable():
-                    settings.setValue(name, w.property(name))
-            settings.endGroup()
-
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -54,7 +20,6 @@ class Ui_MainWindow(object):
         self.groupBox_5 = QtWidgets.QGroupBox(self.centralwidget)
         self.groupBox_5.setGeometry(QtCore.QRect(40, 20, 281, 461))
         self.groupBox_5.setObjectName("groupBox_5")
-        # self.groupBox_5.show()
         self.table = QtWidgets.QTableWidget(self.groupBox_5)
         self.table.setGeometry(QtCore.QRect(0, 20, 281, 391))
         self.table.setGridStyle(QtCore.Qt.DashDotLine)
@@ -85,8 +50,6 @@ class Ui_MainWindow(object):
         font.setWeight(75)
         self.bat_dau.setFont(font)
         self.bat_dau.setObjectName("bat_dau")
-        self.bat_dau.setIcon(QtGui.QIcon('./pictures/LogoTCX_small.png'))
-        self.bat_dau.setFixedSize()
         self.tam_dung = QtWidgets.QPushButton(self.groupBox_5)
         self.tam_dung.setGeometry(QtCore.QRect(110, 420, 71, 31))
         font = QtGui.QFont()
@@ -107,6 +70,152 @@ class Ui_MainWindow(object):
         self.ket_thuc.setObjectName("ket_thuc")
         self.display1 = QtWidgets.QLCDNumber(self.centralwidget)
         self.display1.setGeometry(QtCore.QRect(360, 40, 91, 41))
+        palette = QtGui.QPalette()
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 147, 147))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Light, brush)
+        brush = QtGui.QBrush(QtGui.QColor(247, 94, 94))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Midlight, brush)
+        brush = QtGui.QBrush(QtGui.QColor(119, 20, 20))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Dark, brush)
+        brush = QtGui.QBrush(QtGui.QColor(159, 27, 27))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Mid, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Text, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.BrightText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.ButtonText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Base, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Shadow, brush)
+        brush = QtGui.QBrush(QtGui.QColor(247, 148, 148))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.AlternateBase, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 220))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.ToolTipBase, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.ToolTipText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0, 128))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.PlaceholderText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Button, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 147, 147))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Light, brush)
+        brush = QtGui.QBrush(QtGui.QColor(247, 94, 94))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Midlight, brush)
+        brush = QtGui.QBrush(QtGui.QColor(119, 20, 20))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Dark, brush)
+        brush = QtGui.QBrush(QtGui.QColor(159, 27, 27))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Mid, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Text, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.BrightText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.ButtonText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Base, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Shadow, brush)
+        brush = QtGui.QBrush(QtGui.QColor(247, 148, 148))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.AlternateBase, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 220))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.ToolTipBase, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.ToolTipText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0, 128))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.PlaceholderText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(119, 20, 20))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Button, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 147, 147))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Light, brush)
+        brush = QtGui.QBrush(QtGui.QColor(247, 94, 94))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Midlight, brush)
+        brush = QtGui.QBrush(QtGui.QColor(119, 20, 20))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Dark, brush)
+        brush = QtGui.QBrush(QtGui.QColor(159, 27, 27))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Mid, brush)
+        brush = QtGui.QBrush(QtGui.QColor(119, 20, 20))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Text, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.BrightText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(119, 20, 20))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Base, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Window, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Shadow, brush)
+        brush = QtGui.QBrush(QtGui.QColor(239, 41, 41))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.AlternateBase, brush)
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 220))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ToolTipBase, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ToolTipText, brush)
+        brush = QtGui.QBrush(QtGui.QColor(0, 0, 0, 128))
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.PlaceholderText, brush)
+        self.display1.setPalette(palette)
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         self.display1.setFont(font)
@@ -126,10 +235,9 @@ class Ui_MainWindow(object):
         self.combo_box = QtWidgets.QComboBox(self.centralwidget)
         self.combo_box.setGeometry(QtCore.QRect(510, 120, 86, 21))
         self.combo_box.setObjectName("combo_box")
-        self.combo_box.addItem("a")
-        self.combo_box.addItem("b")
-        self.combo_box.addItem("c")
-        self.combo_box.itemDelegate()
+        self.combo_box.addItem("")
+        self.combo_box.addItem("")
+        self.combo_box.addItem("")
         self.checkBox1 = QtWidgets.QCheckBox(self.centralwidget)
         self.checkBox1.setGeometry(QtCore.QRect(640, 120, 141, 21))
         self.checkBox1.setObjectName("checkBox1")
@@ -170,41 +278,8 @@ class Ui_MainWindow(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
-        # event
-        self.bat_dau.clicked.connect(self.get_date)
-        self.tam_dung.clicked.connect(self.insert_data)
-
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-    def get_date(self):
-        date = self.combo_box.currentText()
-        if str(date) == "Ngày":
-            self.display1.display(1)
-            self.output.setText(str(1))
-        elif str(date) == "Tháng":
-            self.display1.display(2)
-            self.output.setText(str(2))
-        elif str(date) == "Năm":
-            self.display1.display(3)
-            self.output.setText(str(3))
-
-    def insert_data(self):
-        data = [
-            {"camera_name": "camera1", "status": "working"},
-            {"camera_name": "camera2", "status": "stopped"},
-            {"camera_name": "camera3", "status": "working"},
-            {"camera_name": "camera4", "status": "working"}
-        ]
-
-        row_count = (len(data))
-        column_count = (len(data[0]))
-        # self.table.setHorizontalHeaderLabels((list(data[0].keys())))
-        for row in range(row_count):  # add items from array to QTableWidget
-            for column in range(column_count):
-                item = (list(data[row].values())[column])
-                self.table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
-
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -230,9 +305,9 @@ class Ui_MainWindow(object):
         self.ket_thuc.setText(_translate("MainWindow", "Kết thúc"))
         self.label_107.setText(_translate("MainWindow", "Tổng số mang khẩu trang"))
         self.output.setText(_translate("MainWindow", "Output"))
-        # self.combo_box.setItemText(0, _translate("MainWindow", "Ngày"))
-        # self.combo_box.setItemText(1, _translate("MainWindow", "Tháng"))
-        # self.combo_box.setItemText(2, _translate("MainWindow", "Năm"))
+        self.combo_box.setItemText(0, _translate("MainWindow", "Ngày"))
+        self.combo_box.setItemText(1, _translate("MainWindow", "Tháng"))
+        self.combo_box.setItemText(2, _translate("MainWindow", "Năm"))
         self.checkBox1.setText(_translate("MainWindow", "Bật"))
         self.groupBox_7.setTitle(_translate("MainWindow", "Kết quả tổng quát"))
         self.display_vao.setText(_translate("MainWindow", "Tổng số người vào:"))
@@ -240,28 +315,11 @@ class Ui_MainWindow(object):
         self.label_109.setText(_translate("MainWindow", "Tổng số mang khẩu trang:"))
 
 
-class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self):
-        global w_height, w_width
-        super().__init__()
-        self.setupUi(self)
-        self.setFixedSize(w_width, w_height)
-        self.settings = QtCore.QSettings()
-        restore(self.settings)
-
-    def closeEvent(self, event):
-        save(self.settings)
-        super().closeEvent(event)
-
-
-if __name__ == '__main__':
-    print("(***)--- Running APP threading")
+if __name__ == "__main__":
     import sys
-
     app = QtWidgets.QApplication(sys.argv)
-    QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
-    QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
-    QtCore.QCoreApplication.setApplicationName("MyApp")
-    w = MainWindow()
-    w.show()
-    app.exec_()
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())

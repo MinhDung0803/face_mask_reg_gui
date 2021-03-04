@@ -144,7 +144,7 @@ class Thread(QtCore.QThread):
                     time.sleep(1)
                     self.stop_thread()
 
-                self.radioButton_light_option.setChecked(True)
+                # self.radioButton_light_option.setChecked(True)
 
                 # get information form the queue
                 for cam_index in range(num_cam):
@@ -464,7 +464,7 @@ def plotting(name_of_figure,
                 if elem[2] - 1 == i:
                     y[i] += 1
         plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
+        plt.plot(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
                   + str(year_input) + "-"
                   + str(month_input) + "-"
@@ -497,7 +497,7 @@ def plotting(name_of_figure,
                 if elem[3] - 1 == i:
                     y[i] += 1
         plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
+        plt.plot(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
                   + str(year_input) + "-"
                   + str(month_input) + "("
@@ -524,7 +524,7 @@ def plotting(name_of_figure,
                 if elem[4] - 1 == i:
                     y[i] += 1
         plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
+        plt.plot(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
                   + str(year_input) + "("
                   + str(len(return_data)) + ")")

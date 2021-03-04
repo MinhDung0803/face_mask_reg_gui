@@ -193,3 +193,75 @@
 #     elif self.comboBox_3.currentText() == "Thống kê theo Năm":
 #         self.dateEdit.setDisplayFormat("yyyy")
 
+
+# # ----- set icon
+# # giam sat
+# self.g_start_button.setIcon(QtGui.QIcon('./icon/start.jpg'))
+# self.g_stop_button.setIcon(QtGui.QIcon('./icon/stop.png'))
+# self.g_pause_play_button.setIcon(QtGui.QIcon('./icon/pause.png'))
+# # quan li camera
+# self.q_moi_vung_quan_sat_button.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_moi_vach_kiem_dem_button.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_moi_appy_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.q_moi_add_button.setIcon(QtGui.QIcon('./icon/add.jpg'))
+# self.q_moi_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# self.q_chinh_search_button.setIcon(QtGui.QIcon('./icon/search.png'))
+# self.q_chinh_vung_quan_sat.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_chinh_vach_kiem_dem.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_chinh_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.q_chinh_chinh_sua_button.setIcon(QtGui.QIcon('./icon/edit.png'))
+# self.q_chinh_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# # bao cao va thong ke
+# self.b_t1_plot_button.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.b_t1_save_button.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.b_t1_export_button.setIcon(QtGui.QIcon('./icon/export_data.png'))
+# self.b_t2_plot_button.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.b_t2_save_button.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.b_t2_export_button.setIcon(QtGui.QIcon('./icon/export_data.png'))
+# # thong tin va thiet dat
+# self.t_server_sending_button.setIcon(QtGui.QIcon('./icon/sending.png'))
+# self.t_server_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.t_server_confirm_button.setIcon(QtGui.QIcon('./icon/update.png'))
+# self.t_server_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# self.t_pass_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.t_pass_change_pass_button.setIcon(QtGui.QIcon('./icon/confirm.png'))
+# self.t_pass_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# # -----
+
+# import sqlite3
+# def chk_conn(conn):
+#     try:
+#         conn.cursor()
+#         return True
+#     except Exception as ex:
+#         return False
+# conn_display1 = sqlite3.connect('./database/Face_Mask_Recognition_DataBase1.db')
+# print(chk_conn(conn_display1))
+import pandas as pd
+# fake_data = pd.read_csv('./data/fake_data.csv')
+# print(fake_data.type)
+import datetime
+
+object_id = "abcxyz"
+camera_name = "C"
+num_in = 10
+num_mask = 7
+num_no_mask = num_in-num_mask
+data = datetime.datetime.now()
+data_form = {"object_id": object_id,
+             "camera_name": camera_name,
+             "num_in": num_in,
+             "num_mask": num_mask,
+             "num_no_mask": num_no_mask,
+             "minute": data.minute,
+             "hour": data.hour,
+             "day": data.day,
+             "month": data.month,
+             "year": data.year}
+
+insert_data = []
+for i in range(10):
+    insert_data.append(data_form)
+
+data_form_add = pd.DataFrame.from_dict([insert_data])
+print(data_form_add)
