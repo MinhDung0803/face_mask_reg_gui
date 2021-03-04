@@ -116,27 +116,80 @@
 # print(data_form_add)
 
 
-from pydub import AudioSegment
-from pydub.playback import play
-import threading
+# from pydub import AudioSegment
+# from pydub.playback import play
+# import threading
+#
+#
+# def play_audio(file):
+#     # Input an existing wav filename
+#     # wavFile = "police.mp3"
+#     # load the file into pydub
+#     sound = AudioSegment.from_file(file)
+#     print("Playing wav file...")
+#     # play the file
+#     play(sound)
+#
+#
+# def play_audio_by_threading(file):
+#     t = threading.Thread(target = play_audio, args = [file])
+#     t.start()
+#
+#
+# if __name__ == "__main__":
+#     # Input an existing wav filename
+#     wavFile = "./sound_alarm/police.mp3"
+#     play_audio_by_threading(wavFile)
 
+# def insert_data(self):
+#     data = [
+#         {"camera_name": "camera1", "status": "working"},
+#         {"camera_name": "camera2", "status": "stopped"},
+#         {"camera_name": "camera3", "status": "working"},
+#         {"camera_name": "camera4", "status": "working"}
+#     ]
+#
+#     row_count = (len(data))
+#     column_count = (len(data[0]))
+#     # self.table.setHorizontalHeaderLabels((list(data[0].keys())))
+#     for row in range(row_count):  # add items from array to QTableWidget
+#         for column in range(column_count):
+#             item = (list(data[row].values())[column])
+#             self.table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+#
+# def get_date(self):
+#     date = self.combo_box.currentText()
+#     if str(date) == "Ngày":
+#         self.display1.display(1)
+#         self.output.setText(str(1))
+#     elif str(date) == "Tháng":
+#         self.display1.display(2)
+#         self.output.setText(str(2))
+#     elif str(date) == "Năm":
+#         self.display1.display(3)
+#         self.output.setText(str(3))
 
-def play_audio(file):
-    # Input an existing wav filename
-    # wavFile = "police.mp3"
-    # load the file into pydub
-    sound = AudioSegment.from_file(file)
-    print("Playing wav file...")
-    # play the file
-    play(sound)
+# # event
+# self.exit.triggered.connect(exit_app)
 
+# # icon
+# self.plot_1.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.save_1.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.export_1.setIcon(QtGui.QIcon('./icon/export.jpeg'))
+#
+# self.plot_5.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.save_5.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.export_5.setIcon(QtGui.QIcon('./icon/export.jpeg'))
+#
+# # event
+# self.comboBox_3.activated.connect(self.change_plot_date_format)
+#
+#
+# def change_plot_date_format(self):
+#     if self.comboBox_3.currentText() == "Thống kê theo Ngày":
+#         self.dateEdit.setDisplayFormat("dd/MM/yyyy")
+#     elif self.comboBox_3.currentText() == "Thống kê theo Tháng":
+#         self.dateEdit.setDisplayFormat("MM/yyyy")
+#     elif self.comboBox_3.currentText() == "Thống kê theo Năm":
+#         self.dateEdit.setDisplayFormat("yyyy")
 
-def play_audio_by_threading(file):
-    t = threading.Thread(target = play_audio, args = [file])
-    t.start()
-
-
-if __name__ == "__main__":
-    # Input an existing wav filename
-    wavFile = "./sound_alarm/police.mp3"
-    play_audio_by_threading(wavFile)

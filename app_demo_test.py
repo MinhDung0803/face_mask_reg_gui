@@ -77,6 +77,7 @@ class Thread(QtCore.QThread):
         QtCore.QThread.__init__(self, parent)
         self._go = None
         self.display_no_face_mask_counting = display_no_face_mask_counting
+        # self.radioButton_light_option = radioButton_light_option
 
     def run(self):
         global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
@@ -143,6 +144,8 @@ class Thread(QtCore.QThread):
                     time.sleep(1)
                     self.stop_thread()
 
+                self.radioButton_light_option.setChecked(True)
+
                 # get information form the queue
                 for cam_index in range(num_cam):
                     face_mask_output_data = face_mask_buffer[cam_index]
@@ -163,6 +166,7 @@ class Thread(QtCore.QThread):
 
                                 # update display_no_face_mask_counting
                                 self.display_no_face_mask_counting.setText(str(count))
+
 
                                 # insert data into database when detect new no-face-mask person
                                 # AND also check check setting time status
@@ -732,7 +736,7 @@ class Ui_MainWindow(object):
         self.radioButton_light_and_sound_option = QtWidgets.QRadioButton(self.groupBox_3)
         self.radioButton_light_and_sound_option.setGeometry(QtCore.QRect(10, 110, 141, 23))
         self.radioButton_light_and_sound_option.setObjectName("radioButton_light_and_sound_option")
-        self.radioButton_light_and_sound_option.setChecked(True)
+        # self.radioButton_light_and_sound_option.setChecked(True)
 
         self.groupBox_4 = QtWidgets.QGroupBox(self.tab)
         self.groupBox_4.setGeometry(QtCore.QRect(660, 180, 221, 91))
