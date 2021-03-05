@@ -1883,6 +1883,8 @@ class Ui_MainWindow(object):
         self.b_t2_save_button.clicked.connect(self.call_save_2)
         self.b_t1_export_button.clicked.connect(self.call_export_1)
         self.b_t2_export_button.clicked.connect(self.call_export_2)
+        # update camera information in camera management tab
+        self.camera_working_working_status()
         # -----
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -2096,6 +2098,26 @@ class Ui_MainWindow(object):
 
     def setImage(self, image):
         self.g_hien_thi.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    # FOR MAIN VIEW
+    def camera_working_working_status(self):
+        global data_first_time
+        camera_infor = []
+        for i in range(len(data_first_time)):
+            camera_infor_item = [
+                data_first_time[i]["name"],
+                data_first_time[i]["url"],
+                data_first_time[i]["enable"],
+                data_first_time[i]["setting_time"],
+                data_first_time[i]["alarm_option"]]
+            camera_infor.append(camera_infor_item)
+        print(camera_infor)
+        column_count = len(camera_infor[0])
+        row_count = len(camera_infor)
+        for row in range(row_count):
+            for column in range(column_count):
+                item = str((list(camera_infor[row])[column]))
+                self.q_thong_tin_camera_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
     # def input_camera_source_path_and_name(self):
     #     global config_file
