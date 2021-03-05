@@ -23,6 +23,7 @@ def final_create_db(dbname):
     c.execute('''CREATE TABLE DATA
                      ([object_id] text,
                      [camera_name] text,
+                     [camera_id] text,
                      [num_in] integer,
                      [num_mask] integer,
                      [num_no_mask] integer,

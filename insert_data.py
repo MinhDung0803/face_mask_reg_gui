@@ -127,7 +127,6 @@ def add_data_db():
 
     # # read data from csv file
     fake_data = pd.read_csv('./data/fake_data.csv')
-    print(fake_data.type)
     fake_data.to_sql('DATA', conn, if_exists='replace', index=False)
     conn.commit()
 
@@ -172,7 +171,7 @@ def print_query_check():
     year_input = 2020
     month_input = 12
     #query = f"SELECT * FROM DATA WHERE Date = {date}"
-    query = f"SELECT * FROM DATA WHERE Camera_name = '{camera_name_input}' and Month ={month_input}"
+    query = f"SELECT camera_id FROM DATA WHERE Camera_name = '{camera_name_input}' and Month ={month_input}"
     # query = "SELECT * FROM DATA"
     c.execute(query)
     rows = c.fetchall()

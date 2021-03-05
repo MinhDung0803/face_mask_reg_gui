@@ -48,3 +48,15 @@ def check_setting_time():
     alert.setWindowTitle("Setting Time Warning")
     alert.setText('Wrong time information has been input, please check again!')
     alert.exec_()
+
+def plotting_no_data_warning():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText('Hiện tại không có thông tin cho thời gian và camera đã nhập, vui lòng kiểm tra lại!')
+    alert.exec_()
+
+def query_camera_id_warning():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText('Hiện tại Camera này chưa được đăng kí hoặc mất thông tin camera_id, vui lòng kiểm tra lại!')
+    alert.exec_()
