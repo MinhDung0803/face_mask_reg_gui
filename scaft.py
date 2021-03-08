@@ -237,31 +237,84 @@
 #         return False
 # conn_display1 = sqlite3.connect('./database/Face_Mask_Recognition_DataBase1.db')
 # print(chk_conn(conn_display1))
-import pandas as pd
-# fake_data = pd.read_csv('./data/fake_data.csv')
-# print(fake_data.type)
-import datetime
+# import pandas as pd
+# # fake_data = pd.read_csv('./data/fake_data.csv')
+# # print(fake_data.type)
+# import datetime
+#
+# object_id = "abcxyz"
+# camera_name = "C"
+# num_in = 10
+# num_mask = 7
+# num_no_mask = num_in-num_mask
+# data = datetime.datetime.now()
+# data_form = {"object_id": object_id,
+#              "camera_name": camera_name,
+#              "num_in": num_in,
+#              "num_mask": num_mask,
+#              "num_no_mask": num_no_mask,
+#              "minute": data.minute,
+#              "hour": data.hour,
+#              "day": data.day,
+#              "month": data.month,
+#              "year": data.year}
+#
+# insert_data = []
+# for i in range(10):
+#     insert_data.append(data_form)
+#
+# data_form_add = pd.DataFrame.from_dict([insert_data])
+# print(data_form_add)
 
-object_id = "abcxyz"
-camera_name = "C"
-num_in = 10
-num_mask = 7
-num_no_mask = num_in-num_mask
-data = datetime.datetime.now()
-data_form = {"object_id": object_id,
-             "camera_name": camera_name,
-             "num_in": num_in,
-             "num_mask": num_mask,
-             "num_no_mask": num_no_mask,
-             "minute": data.minute,
-             "hour": data.hour,
-             "day": data.day,
-             "month": data.month,
-             "year": data.year}
+# def create_default_counting_line(w_in, h_in, extra_pixels_in):
+#     counting_line = [0 + extra_pixels_in, int(h_in / 2), w_in - extra_pixels_in, int(h_in / 2)]
+#     direction_point = [int(w_in / 2), int(h_in / 2) + 50]
+#     result = [
+#         {
+#             "id": "Counting-1",
+#             "points": counting_line,
+#             "direction_point": direction_point
+#         }
+#     ]
+#     return result
+#
+# w = 1080
+# h = 720
+# extra_pixels = 3
+#
+# c = create_default_counting_line(w, h, extra_pixels)
+# print(c)
 
-insert_data = []
-for i in range(10):
-    insert_data.append(data_form)
 
-data_form_add = pd.DataFrame.from_dict([insert_data])
-print(data_form_add)
+# def test():
+#     lst = [1,2,3,4,5,6,7,8,9,10,11,12]
+#     result = []
+#     j = 0
+#     for i in range(0,len(lst),6):
+#         j += 1
+#         item = {
+#             "id": f"Counting-{j}",
+#             "points": [lst[i], lst[i+1], lst[i+2], lst[i+3]],
+#             "direction_point": [lst[i+4], lst[i+5]]
+#         }
+#         print(item)
+#         result.append(item)
+#     return result
+#
+# z = test()
+# print(z)
+
+# lst = [1,2,3,4,5,6,7,8,9,10,11,12]
+# print(len(lst)%6 == 0)
+
+a = [
+    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
+    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
+]
+
+b = [
+    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
+    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
+]
+
+print(a==b)

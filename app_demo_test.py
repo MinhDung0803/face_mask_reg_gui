@@ -282,14 +282,14 @@ def camera_source_alarm():
 
 def check_path_for_ip_camera():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("IP Camera Warning")
+    alert.setWindowTitle("Camera Source Warning")
     alert.setText('Wrong IP address for IPCamera! Please check again!')
     alert.exec_()
 
 
 def check_path_for_webcam():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Webcam Warning")
+    alert.setWindowTitle("a")
     alert.setText('Wrong ID for Webcam! Please check again!')
     alert.exec_()
 

@@ -17,6 +17,7 @@ from mask_utils import app_warning_function
 import report_statistics_tab
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # variables
@@ -31,22 +32,34 @@ w_height = 740
 light_alarm = 0
 sound_alarm = 0
 both_alarm = 1
+trigger_stop = 0
+
 draw_region_points = []
+draw_counting_points = []
+
 draw_region_points_no_scale = []
 draw_counting_no_scale = []
+
+draw_region_flag_new = False
+draw_count_flag_new = False
+
+draw_region_flag_old = False
+draw_count_flag_old = False
+
+set_working_time_flag = False
+
 extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
-draw_region_flag = False
-draw_counting_points = []
-draw_count_flag = False
-trigger_stop = 0
-set_working_time_flag = False
+
 # from
 from_time_hour = None
 from_time_minute = None
+
 # to
 to_time_hour = None
 to_time_minute = None
+new_camera_id = ""
+new_camera_path = ""
 
 # config_file
 # ----- KEY
@@ -72,12 +85,15 @@ def create_default_region(w_in, h_in, extra_pixels_in):
 
 
 def create_default_counting_line(w_in, h_in, extra_pixels_in):
-    result = [0 + extra_pixels_in, int(h_in / 2), w_in - extra_pixels_in, int(h_in / 2)]
-    return result
-
-
-def create_direction_point(w_in, h_in):
-    result = [int(w_in / 2), int(h_in / 2) + 50]
+    counting_line = [0 + extra_pixels_in, int(h_in / 2), w_in - extra_pixels_in, int(h_in / 2)]
+    direction_point = [int(w_in / 2), int(h_in / 2) + 50]
+    result = [
+        {
+            "id": "Counting-1",
+            "points": counting_line,
+            "direction_point": direction_point
+        }
+    ]
     return result
 
 
@@ -318,23 +334,10 @@ def shape_selection_for_counting(event, x, y, flags, param):
         cv2.imshow("Draw Counting Region", image_counting)
 
 
-def draw_region():
-    global width, height, draw_region_points, draw_region_flag, scale, draw_region_points_no_scale, image_region
-    draw_region_flag = True
-    # load yaml config file
-    yaml.warnings({'YAMLLoadWarning': False})
-    with open(config_file, 'r') as fs:
-        config = yaml.load(fs)
-    cam_config = config["input"]["cam_config"]
-
-    # open json file
-    with open(cam_config) as json_file:
-        json_data = json.load(json_file)
-    json_file.close()
-    # get camera's path
-    input_path = json_data["data"][0]["url"]
+def draw_region(path):
+    global width, height, draw_region_points, scale, draw_region_points_no_scale, image_region
     # read and write original image
-    cap = cv2.VideoCapture(input_path)
+    cap = cv2.VideoCapture(path)
     # get width, height of camera
     w = int(cap.get(3))
     h = int(cap.get(4))
@@ -373,8 +376,7 @@ def draw_region():
 
 
 def draw_counting():
-    global width, height, draw_counting_points, draw_count_flag, image_counting
-    draw_count_flag = True
+    global width, height, draw_counting_points, image_counting
     image_counting = cv2.imread("./draw/draw_region_image.jpg")
     cv2.namedWindow("Draw Counting Region")
     cv2.setMouseCallback("Draw Counting Region", shape_selection_for_counting)
@@ -427,67 +429,6 @@ def save(settings):
                 if prop.isWritable():
                     settings.setValue(name, w.property(name))
             settings.endGroup()
-
-
-def input_region_and_counting():
-    global name, \
-        config_file, \
-        draw_region_points, \
-        draw_region_flag, \
-        draw_count_flag, \
-        draw_counting_points, \
-        extra_pixels
-    if os.path.exists(config_file):
-        # load yaml config file
-        yaml.warnings({'YAMLLoadWarning': False})
-        with open(config_file, 'r') as fs:
-            config = yaml.load(fs)
-        cam_config = config["input"]["cam_config"]
-
-        # open json file
-        with open(cam_config) as json_file:
-            json_data = json.load(json_file)
-        json_file.close()
-
-        path_read = json_data["data"][0]["url"]
-
-        # ----- get width, height of input
-        cap = cv2.VideoCapture(path_read)
-        w = int(cap.get(3))
-        h = int(cap.get(4))
-        cap.release()
-        # -----
-
-        # ----- get tracking region
-        if draw_region_flag:
-            final_draw_region = draw_region_points
-        else:
-            final_draw_region = create_default_region(w, h, extra_pixels)
-        # print("final_draw_region: ", final_draw_region)
-
-        # ----- get counting line
-        if draw_count_flag:
-            final_counting_line = draw_counting_points
-            final_direction_point = [int(final_counting_line[2] / 2), final_counting_line[1] + 100]
-        else:
-            final_counting_line = create_default_counting_line(w, h, extra_pixels)
-            final_direction_point = create_direction_point(w, h)
-
-        # ----- update json file
-
-        # update information in json file
-        json_data["data"][0]["tracking_regions"][0]["points"] = final_draw_region
-        json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["points"] = \
-            final_counting_line
-        json_data["data"][0]["tracking_regions"][0]["trap_lines"]["unlimited_counts"][0]["direction_point"] = \
-            final_direction_point
-        json_data["data"][0]["tracking_regions"][0]["id_show_point"] = final_direction_point
-
-        # write json file
-        with open(json_file.name, "w") as outfile:
-            json.dump(json_data, outfile)
-        outfile.close()
-        # -----
 
 
 class Ui_MainWindow(object):
@@ -631,10 +572,6 @@ class Ui_MainWindow(object):
         self.t_server_apply_button.setFont(font)
         self.t_server_apply_button.setText("")
         self.t_server_apply_button.setObjectName("t_server_apply_button")
-        self.t_server_key = QtWidgets.QLineEdit(self.tab_7)
-        self.t_server_key.setGeometry(QtCore.QRect(170, 130, 371, 21))
-        self.t_server_key.setText("")
-        self.t_server_key.setObjectName("t_server_key")
         self.t_server_cap_phep = QtWidgets.QLineEdit(self.tab_7)
         self.t_server_cap_phep.setGeometry(QtCore.QRect(170, 50, 371, 21))
         self.t_server_cap_phep.setText("")
@@ -687,6 +624,11 @@ class Ui_MainWindow(object):
         self.t_server_confirm_button.setFont(font)
         self.t_server_confirm_button.setText("")
         self.t_server_confirm_button.setObjectName("t_server_confirm_button")
+        self.t_server_key = QtWidgets.QLabel(self.tab_7)
+        self.t_server_key.setGeometry(QtCore.QRect(170, 130, 371, 21))
+        self.t_server_key.setFrameShape(QtWidgets.QFrame.Box)
+        self.t_server_key.setText("")
+        self.t_server_key.setObjectName("t_server_key")
         self.tabWidget_2.addTab(self.tab_7, "")
         self.tab_8 = QtWidgets.QWidget()
         self.tab_8.setObjectName("tab_8")
@@ -751,6 +693,8 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
         self.g_tt_hoat_dong_table.setFont(font)
         self.g_tt_hoat_dong_table.setGridStyle(QtCore.Qt.DashDotLine)
         self.g_tt_hoat_dong_table.setRowCount(40)
@@ -810,6 +754,10 @@ class Ui_MainWindow(object):
         self.groupBox_15.setObjectName("groupBox_15")
         self.g_ket_qua_chi_tiet_table = QtWidgets.QTableWidget(self.groupBox_15)
         self.g_ket_qua_chi_tiet_table.setGeometry(QtCore.QRect(0, 21, 531, 181))
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.g_ket_qua_chi_tiet_table.setFont(font)
         self.g_ket_qua_chi_tiet_table.setGridStyle(QtCore.Qt.DashDotLine)
         self.g_ket_qua_chi_tiet_table.setRowCount(40)
         self.g_ket_qua_chi_tiet_table.setObjectName("g_ket_qua_chi_tiet_table")
@@ -833,19 +781,19 @@ class Ui_MainWindow(object):
         self.g_hien_thi.setAlignment(QtCore.Qt.AlignCenter)
         self.g_hien_thi.setObjectName("g_hien_thi")
         self.groupBox_7 = QtWidgets.QGroupBox(self.tab)
-        self.groupBox_7.setGeometry(QtCore.QRect(530, 460, 291, 201))
+        self.groupBox_7.setGeometry(QtCore.QRect(530, 460, 281, 201))
         self.groupBox_7.setObjectName("groupBox_7")
         self.label_106 = QtWidgets.QLabel(self.groupBox_7)
-        self.label_106.setGeometry(QtCore.QRect(10, 130, 131, 41))
+        self.label_106.setGeometry(QtCore.QRect(10, 40, 111, 41))
         self.label_106.setObjectName("label_106")
         self.label_105 = QtWidgets.QLabel(self.groupBox_7)
-        self.label_105.setGeometry(QtCore.QRect(10, 80, 301, 41))
+        self.label_105.setGeometry(QtCore.QRect(10, 140, 161, 41))
         self.label_105.setObjectName("label_105")
         self.label_109 = QtWidgets.QLabel(self.groupBox_7)
-        self.label_109.setGeometry(QtCore.QRect(10, 30, 251, 41))
+        self.label_109.setGeometry(QtCore.QRect(10, 90, 121, 41))
         self.label_109.setObjectName("label_109")
         self.g_tong_kt = QtWidgets.QLCDNumber(self.groupBox_7)
-        self.g_tong_kt.setGeometry(QtCore.QRect(190, 30, 91, 41))
+        self.g_tong_kt.setGeometry(QtCore.QRect(180, 90, 91, 41))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -1002,7 +950,7 @@ class Ui_MainWindow(object):
         self.g_tong_kt.setFrameShadow(QtWidgets.QFrame.Plain)
         self.g_tong_kt.setObjectName("g_tong_kt")
         self.g_tong_vao = QtWidgets.QLCDNumber(self.groupBox_7)
-        self.g_tong_vao.setGeometry(QtCore.QRect(190, 130, 91, 41))
+        self.g_tong_vao.setGeometry(QtCore.QRect(180, 40, 91, 41))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -1156,7 +1104,7 @@ class Ui_MainWindow(object):
         self.g_tong_vao.setFrameShadow(QtWidgets.QFrame.Plain)
         self.g_tong_vao.setObjectName("g_tong_vao")
         self.g_tong_khong_kt = QtWidgets.QLCDNumber(self.groupBox_7)
-        self.g_tong_khong_kt.setGeometry(QtCore.QRect(190, 80, 91, 41))
+        self.g_tong_khong_kt.setGeometry(QtCore.QRect(180, 140, 91, 41))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -1310,8 +1258,18 @@ class Ui_MainWindow(object):
         self.g_tong_khong_kt.setFrameShadow(QtWidgets.QFrame.Plain)
         self.g_tong_khong_kt.setObjectName("g_tong_khong_kt")
         self.groupBox_8 = QtWidgets.QGroupBox(self.tab)
-        self.groupBox_8.setGeometry(QtCore.QRect(820, 460, 231, 201))
+        self.groupBox_8.setGeometry(QtCore.QRect(810, 460, 261, 201))
         self.groupBox_8.setObjectName("groupBox_8")
+        self.g_date_time = QtWidgets.QLabel(self.groupBox_8)
+        self.g_date_time.setGeometry(QtCore.QRect(10, 40, 241, 61))
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        font.setWeight(75)
+        self.g_date_time.setFont(font)
+        self.g_date_time.setFrameShape(QtWidgets.QFrame.WinPanel)
+        self.g_date_time.setAlignment(QtCore.Qt.AlignCenter)
+        self.g_date_time.setObjectName("g_date_time")
         self.groupBox_4.raise_()
         self.groupBox_5.raise_()
         self.groupBox_15.raise_()
@@ -1325,9 +1283,14 @@ class Ui_MainWindow(object):
         self.groupBox_10.setObjectName("groupBox_10")
         self.q_thong_tin_camera_table = QtWidgets.QTableWidget(self.groupBox_10)
         self.q_thong_tin_camera_table.setGeometry(QtCore.QRect(0, 20, 561, 641))
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
+        self.q_thong_tin_camera_table.setFont(font)
         self.q_thong_tin_camera_table.setGridStyle(QtCore.Qt.DashDotLine)
         self.q_thong_tin_camera_table.setRowCount(40)
-        self.q_thong_tin_camera_table.setColumnCount(5)
+        self.q_thong_tin_camera_table.setColumnCount(7)
         self.q_thong_tin_camera_table.setObjectName("q_thong_tin_camera_table")
         item = QtWidgets.QTableWidgetItem()
         self.q_thong_tin_camera_table.setHorizontalHeaderItem(0, item)
@@ -1340,6 +1303,10 @@ class Ui_MainWindow(object):
         item = QtWidgets.QTableWidgetItem()
         self.q_thong_tin_camera_table.setHorizontalHeaderItem(4, item)
         item = QtWidgets.QTableWidgetItem()
+        self.q_thong_tin_camera_table.setHorizontalHeaderItem(5, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.q_thong_tin_camera_table.setHorizontalHeaderItem(6, item)
+        item = QtWidgets.QTableWidgetItem()
         self.q_thong_tin_camera_table.setItem(0, 0, item)
         item = QtWidgets.QTableWidgetItem()
         self.q_thong_tin_camera_table.setItem(0, 1, item)
@@ -1347,21 +1314,24 @@ class Ui_MainWindow(object):
         self.q_thong_tin_camera_table.setItem(0, 2, item)
         item = QtWidgets.QTableWidgetItem()
         self.q_thong_tin_camera_table.setItem(0, 3, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.q_thong_tin_camera_table.setItem(0, 4, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.q_thong_tin_camera_table.setItem(0, 5, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.q_thong_tin_camera_table.setItem(0, 6, item)
         self.q_thong_tin_camera_table.horizontalHeader().setDefaultSectionSize(123)
         self.q_thong_tin_camera_table.verticalHeader().setDefaultSectionSize(21)
-        font.setPointSize(10)
-        font.setBold(False)
-        self.q_thong_tin_camera_table.setFont(font)
         self.tabWidget = QtWidgets.QTabWidget(self.tab_4)
         self.tabWidget.setGeometry(QtCore.QRect(560, 0, 511, 661))
         self.tabWidget.setObjectName("tabWidget")
         self.tab_5 = QtWidgets.QWidget()
         self.tab_5.setObjectName("tab_5")
         self.q_moi_time_tu = QtWidgets.QTimeEdit(self.tab_5)
-        self.q_moi_time_tu.setGeometry(QtCore.QRect(150, 330, 61, 20))
+        self.q_moi_time_tu.setGeometry(QtCore.QRect(150, 370, 61, 20))
         self.q_moi_time_tu.setObjectName("q_moi_time_tu")
         self.q_moi_vach_kiem_dem_button = QtWidgets.QPushButton(self.tab_5)
-        self.q_moi_vach_kiem_dem_button.setGeometry(QtCore.QRect(130, 170, 61, 21))
+        self.q_moi_vach_kiem_dem_button.setGeometry(QtCore.QRect(130, 210, 61, 21))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1374,46 +1344,46 @@ class Ui_MainWindow(object):
         self.q_moi_webcam.setGeometry(QtCore.QRect(420, 10, 81, 23))
         self.q_moi_webcam.setObjectName("q_moi_webcam")
         self.q_moi_dia_chi_camera = QtWidgets.QLineEdit(self.tab_5)
-        self.q_moi_dia_chi_camera.setGeometry(QtCore.QRect(130, 50, 371, 21))
+        self.q_moi_dia_chi_camera.setGeometry(QtCore.QRect(130, 90, 371, 21))
         self.q_moi_dia_chi_camera.setObjectName("q_moi_dia_chi_camera")
         self.label_98 = QtWidgets.QLabel(self.tab_5)
-        self.label_98.setGeometry(QtCore.QRect(10, 130, 121, 17))
+        self.label_98.setGeometry(QtCore.QRect(10, 170, 121, 17))
         self.label_98.setObjectName("label_98")
         self.q_moi_combobox_den = QtWidgets.QComboBox(self.tab_5)
-        self.q_moi_combobox_den.setGeometry(QtCore.QRect(240, 210, 111, 21))
+        self.q_moi_combobox_den.setGeometry(QtCore.QRect(240, 250, 111, 21))
         self.q_moi_combobox_den.setObjectName("q_moi_combobox_den")
         self.q_moi_combobox_den.addItem("")
         self.q_moi_combobox_den.addItem("")
         self.q_moi_combobox_den.addItem("")
         self.label_94 = QtWidgets.QLabel(self.tab_5)
-        self.label_94.setGeometry(QtCore.QRect(240, 330, 41, 17))
+        self.label_94.setGeometry(QtCore.QRect(240, 370, 41, 17))
         self.label_94.setObjectName("label_94")
         self.q_moi_time_den = QtWidgets.QTimeEdit(self.tab_5)
-        self.q_moi_time_den.setGeometry(QtCore.QRect(270, 330, 61, 20))
+        self.q_moi_time_den.setGeometry(QtCore.QRect(270, 370, 61, 20))
         self.q_moi_time_den.setObjectName("q_moi_time_den")
         self.label_95 = QtWidgets.QLabel(self.tab_5)
-        self.label_95.setGeometry(QtCore.QRect(10, 90, 101, 17))
+        self.label_95.setGeometry(QtCore.QRect(10, 130, 101, 17))
         self.label_95.setObjectName("label_95")
         self.q_moi_combobox_am_thanh = QtWidgets.QComboBox(self.tab_5)
-        self.q_moi_combobox_am_thanh.setGeometry(QtCore.QRect(240, 250, 111, 21))
+        self.q_moi_combobox_am_thanh.setGeometry(QtCore.QRect(240, 290, 111, 21))
         self.q_moi_combobox_am_thanh.setObjectName("q_moi_combobox_am_thanh")
         self.q_moi_combobox_am_thanh.addItem("")
         self.q_moi_combobox_am_thanh.addItem("")
         self.q_moi_combobox_am_thanh.addItem("")
         self.q_moi_den = QtWidgets.QRadioButton(self.tab_5)
-        self.q_moi_den.setGeometry(QtCore.QRect(130, 210, 91, 21))
+        self.q_moi_den.setGeometry(QtCore.QRect(130, 250, 91, 21))
         self.q_moi_den.setObjectName("q_moi_den")
         self.label_77 = QtWidgets.QLabel(self.tab_5)
-        self.label_77.setGeometry(QtCore.QRect(10, 50, 121, 17))
+        self.label_77.setGeometry(QtCore.QRect(10, 90, 121, 17))
         self.label_77.setObjectName("label_77")
         self.q_moi_ten_camera = QtWidgets.QLineEdit(self.tab_5)
         self.q_moi_ten_camera.setGeometry(QtCore.QRect(130, 10, 181, 21))
         self.q_moi_ten_camera.setObjectName("q_moi_ten_camera")
         self.q_moi_am_thanh = QtWidgets.QRadioButton(self.tab_5)
-        self.q_moi_am_thanh.setGeometry(QtCore.QRect(130, 250, 91, 21))
+        self.q_moi_am_thanh.setGeometry(QtCore.QRect(130, 290, 91, 21))
         self.q_moi_am_thanh.setObjectName("q_moi_am_thanh")
         self.q_moi_vung_quan_sat_button = QtWidgets.QPushButton(self.tab_5)
-        self.q_moi_vung_quan_sat_button.setGeometry(QtCore.QRect(130, 130, 61, 21))
+        self.q_moi_vung_quan_sat_button.setGeometry(QtCore.QRect(130, 170, 61, 21))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1426,28 +1396,29 @@ class Ui_MainWindow(object):
         self.q_moi_ipcamera.setGeometry(QtCore.QRect(320, 10, 91, 23))
         self.q_moi_ipcamera.setObjectName("q_moi_ipcamera")
         self.label_76 = QtWidgets.QLabel(self.tab_5)
-        self.label_76.setGeometry(QtCore.QRect(10, 330, 111, 17))
+        self.label_76.setGeometry(QtCore.QRect(10, 370, 111, 17))
         self.label_76.setObjectName("label_76")
         self.q_moi_che_do = QtWidgets.QCheckBox(self.tab_5)
-        self.q_moi_che_do.setGeometry(QtCore.QRect(130, 90, 51, 21))
+        self.q_moi_che_do.setGeometry(QtCore.QRect(130, 130, 51, 21))
         self.q_moi_che_do.setObjectName("q_moi_che_do")
+        self.q_moi_che_do.setChecked(True)
         self.label_97 = QtWidgets.QLabel(self.tab_5)
-        self.label_97.setGeometry(QtCore.QRect(10, 170, 121, 17))
+        self.label_97.setGeometry(QtCore.QRect(10, 210, 121, 17))
         self.label_97.setObjectName("label_97")
         self.label_75 = QtWidgets.QLabel(self.tab_5)
         self.label_75.setGeometry(QtCore.QRect(10, 10, 121, 17))
         self.label_75.setObjectName("label_75")
         self.q_moi_ca_hai = QtWidgets.QRadioButton(self.tab_5)
-        self.q_moi_ca_hai.setGeometry(QtCore.QRect(130, 290, 81, 21))
+        self.q_moi_ca_hai.setGeometry(QtCore.QRect(130, 330, 81, 21))
         self.q_moi_ca_hai.setObjectName("q_moi_ca_hai")
         self.label_78 = QtWidgets.QLabel(self.tab_5)
-        self.label_78.setGeometry(QtCore.QRect(130, 330, 41, 17))
+        self.label_78.setGeometry(QtCore.QRect(130, 370, 41, 17))
         self.label_78.setObjectName("label_78")
         self.label_96 = QtWidgets.QLabel(self.tab_5)
-        self.label_96.setGeometry(QtCore.QRect(10, 210, 121, 17))
+        self.label_96.setGeometry(QtCore.QRect(10, 250, 121, 17))
         self.label_96.setObjectName("label_96")
         self.q_moi_cancel_button = QtWidgets.QPushButton(self.tab_5)
-        self.q_moi_cancel_button.setGeometry(QtCore.QRect(310, 380, 61, 31))
+        self.q_moi_cancel_button.setGeometry(QtCore.QRect(310, 420, 61, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1457,7 +1428,7 @@ class Ui_MainWindow(object):
         self.q_moi_cancel_button.setText("")
         self.q_moi_cancel_button.setObjectName("q_moi_cancel_button")
         self.q_moi_appy_button = QtWidgets.QPushButton(self.tab_5)
-        self.q_moi_appy_button.setGeometry(QtCore.QRect(130, 380, 61, 31))
+        self.q_moi_appy_button.setGeometry(QtCore.QRect(130, 420, 61, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1467,7 +1438,7 @@ class Ui_MainWindow(object):
         self.q_moi_appy_button.setText("")
         self.q_moi_appy_button.setObjectName("q_moi_appy_button")
         self.q_moi_add_button = QtWidgets.QPushButton(self.tab_5)
-        self.q_moi_add_button.setGeometry(QtCore.QRect(220, 380, 61, 31))
+        self.q_moi_add_button.setGeometry(QtCore.QRect(220, 420, 61, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1476,23 +1447,31 @@ class Ui_MainWindow(object):
         self.q_moi_add_button.setFont(font)
         self.q_moi_add_button.setText("")
         self.q_moi_add_button.setObjectName("q_moi_add_button")
+        self.label_79 = QtWidgets.QLabel(self.tab_5)
+        self.label_79.setGeometry(QtCore.QRect(10, 50, 71, 17))
+        self.label_79.setObjectName("label_79")
+        self.q_moi_camera_id = QtWidgets.QLabel(self.tab_5)
+        self.q_moi_camera_id.setGeometry(QtCore.QRect(130, 50, 371, 21))
+        self.q_moi_camera_id.setFrameShape(QtWidgets.QFrame.Box)
+        self.q_moi_camera_id.setText("")
+        self.q_moi_camera_id.setObjectName("q_moi_camera_id")
         self.tabWidget.addTab(self.tab_5, "")
         self.tab_6 = QtWidgets.QWidget()
         self.tab_6.setObjectName("tab_6")
         self.label_99 = QtWidgets.QLabel(self.tab_6)
-        self.label_99.setGeometry(QtCore.QRect(240, 330, 41, 17))
+        self.label_99.setGeometry(QtCore.QRect(240, 410, 41, 17))
         self.label_99.setObjectName("label_99")
         self.q_chinh_time_den = QtWidgets.QTimeEdit(self.tab_6)
-        self.q_chinh_time_den.setGeometry(QtCore.QRect(270, 330, 61, 20))
+        self.q_chinh_time_den.setGeometry(QtCore.QRect(270, 410, 61, 20))
         self.q_chinh_time_den.setObjectName("q_chinh_time_den")
         self.q_chinh_ca_hai = QtWidgets.QRadioButton(self.tab_6)
-        self.q_chinh_ca_hai.setGeometry(QtCore.QRect(130, 290, 81, 21))
+        self.q_chinh_ca_hai.setGeometry(QtCore.QRect(130, 370, 81, 21))
         self.q_chinh_ca_hai.setObjectName("q_chinh_ca_hai")
         self.label_100 = QtWidgets.QLabel(self.tab_6)
-        self.label_100.setGeometry(QtCore.QRect(10, 90, 101, 17))
+        self.label_100.setGeometry(QtCore.QRect(10, 170, 101, 17))
         self.label_100.setObjectName("label_100")
         self.q_chinh_vung_quan_sat = QtWidgets.QPushButton(self.tab_6)
-        self.q_chinh_vung_quan_sat.setGeometry(QtCore.QRect(130, 130, 61, 21))
+        self.q_chinh_vung_quan_sat.setGeometry(QtCore.QRect(130, 210, 61, 21))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1502,19 +1481,20 @@ class Ui_MainWindow(object):
         self.q_chinh_vung_quan_sat.setText("")
         self.q_chinh_vung_quan_sat.setObjectName("q_chinh_vung_quan_sat")
         self.q_chinh_che_do = QtWidgets.QCheckBox(self.tab_6)
-        self.q_chinh_che_do.setGeometry(QtCore.QRect(130, 90, 51, 21))
+        self.q_chinh_che_do.setGeometry(QtCore.QRect(130, 170, 51, 21))
         self.q_chinh_che_do.setObjectName("q_chinh_che_do")
+        self.q_chinh_che_do.setChecked(True)
         self.label_102 = QtWidgets.QLabel(self.tab_6)
-        self.label_102.setGeometry(QtCore.QRect(10, 210, 121, 17))
+        self.label_102.setGeometry(QtCore.QRect(10, 290, 121, 17))
         self.label_102.setObjectName("label_102")
         self.q_chinh_camera_name = QtWidgets.QLineEdit(self.tab_6)
-        self.q_chinh_camera_name.setGeometry(QtCore.QRect(130, 10, 301, 21))
+        self.q_chinh_camera_name.setGeometry(QtCore.QRect(130, 10, 311, 21))
         self.q_chinh_camera_name.setObjectName("q_chinh_camera_name")
         self.label_81 = QtWidgets.QLabel(self.tab_6)
         self.label_81.setGeometry(QtCore.QRect(10, 10, 121, 17))
         self.label_81.setObjectName("label_81")
         self.q_chinh_apply_button = QtWidgets.QPushButton(self.tab_6)
-        self.q_chinh_apply_button.setGeometry(QtCore.QRect(130, 380, 61, 31))
+        self.q_chinh_apply_button.setGeometry(QtCore.QRect(80, 460, 61, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1523,11 +1503,21 @@ class Ui_MainWindow(object):
         self.q_chinh_apply_button.setFont(font)
         self.q_chinh_apply_button.setText("")
         self.q_chinh_apply_button.setObjectName("q_chinh_apply_button")
+        self.q_chinh_delete_button = QtWidgets.QPushButton(self.tab_6)
+        self.q_chinh_delete_button.setGeometry(QtCore.QRect(170, 460, 61, 31))
+        font = QtGui.QFont()
+        font.setFamily("Ubuntu")
+        font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
+        self.q_chinh_delete_button.setFont(font)
+        self.q_chinh_delete_button.setText("")
+        self.q_chinh_delete_button.setObjectName("q_chinh_delete_button")
         self.q_chinh_den = QtWidgets.QRadioButton(self.tab_6)
-        self.q_chinh_den.setGeometry(QtCore.QRect(130, 210, 91, 21))
+        self.q_chinh_den.setGeometry(QtCore.QRect(130, 290, 91, 21))
         self.q_chinh_den.setObjectName("q_chinh_den")
         self.q_chinh_vach_kiem_dem = QtWidgets.QPushButton(self.tab_6)
-        self.q_chinh_vach_kiem_dem.setGeometry(QtCore.QRect(130, 170, 61, 21))
+        self.q_chinh_vach_kiem_dem.setGeometry(QtCore.QRect(130, 250, 61, 21))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1537,19 +1527,19 @@ class Ui_MainWindow(object):
         self.q_chinh_vach_kiem_dem.setText("")
         self.q_chinh_vach_kiem_dem.setObjectName("q_chinh_vach_kiem_dem")
         self.label_82 = QtWidgets.QLabel(self.tab_6)
-        self.label_82.setGeometry(QtCore.QRect(10, 330, 111, 17))
+        self.label_82.setGeometry(QtCore.QRect(10, 410, 111, 17))
         self.label_82.setObjectName("label_82")
         self.q_chinh_combobox_am_thanh = QtWidgets.QComboBox(self.tab_6)
-        self.q_chinh_combobox_am_thanh.setGeometry(QtCore.QRect(240, 250, 111, 21))
+        self.q_chinh_combobox_am_thanh.setGeometry(QtCore.QRect(240, 330, 111, 21))
         self.q_chinh_combobox_am_thanh.setObjectName("q_chinh_combobox_am_thanh")
         self.q_chinh_combobox_am_thanh.addItem("")
         self.q_chinh_combobox_am_thanh.addItem("")
         self.q_chinh_combobox_am_thanh.addItem("")
         self.label_103 = QtWidgets.QLabel(self.tab_6)
-        self.label_103.setGeometry(QtCore.QRect(10, 50, 121, 17))
+        self.label_103.setGeometry(QtCore.QRect(10, 94, 121, 17))
         self.label_103.setObjectName("label_103")
         self.q_chinh_cancel_button = QtWidgets.QPushButton(self.tab_6)
-        self.q_chinh_cancel_button.setGeometry(QtCore.QRect(310, 380, 61, 31))
+        self.q_chinh_cancel_button.setGeometry(QtCore.QRect(350, 460, 61, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1559,10 +1549,10 @@ class Ui_MainWindow(object):
         self.q_chinh_cancel_button.setText("")
         self.q_chinh_cancel_button.setObjectName("q_chinh_cancel_button")
         self.label_104 = QtWidgets.QLabel(self.tab_6)
-        self.label_104.setGeometry(QtCore.QRect(10, 170, 121, 17))
+        self.label_104.setGeometry(QtCore.QRect(10, 250, 121, 17))
         self.label_104.setObjectName("label_104")
         self.q_chinh_chinh_sua_button = QtWidgets.QPushButton(self.tab_6)
-        self.q_chinh_chinh_sua_button.setGeometry(QtCore.QRect(220, 380, 61, 31))
+        self.q_chinh_chinh_sua_button.setGeometry(QtCore.QRect(260, 460, 61, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1572,25 +1562,25 @@ class Ui_MainWindow(object):
         self.q_chinh_chinh_sua_button.setText("")
         self.q_chinh_chinh_sua_button.setObjectName("q_chinh_chinh_sua_button")
         self.q_chinh_am_thanh = QtWidgets.QRadioButton(self.tab_6)
-        self.q_chinh_am_thanh.setGeometry(QtCore.QRect(130, 250, 91, 21))
+        self.q_chinh_am_thanh.setGeometry(QtCore.QRect(130, 330, 91, 21))
         self.q_chinh_am_thanh.setObjectName("q_chinh_am_thanh")
         self.label_107 = QtWidgets.QLabel(self.tab_6)
-        self.label_107.setGeometry(QtCore.QRect(10, 130, 121, 17))
+        self.label_107.setGeometry(QtCore.QRect(10, 210, 121, 17))
         self.label_107.setObjectName("label_107")
         self.label_108 = QtWidgets.QLabel(self.tab_6)
-        self.label_108.setGeometry(QtCore.QRect(130, 330, 41, 17))
+        self.label_108.setGeometry(QtCore.QRect(130, 410, 41, 17))
         self.label_108.setObjectName("label_108")
         self.q_chinh_combobox_den = QtWidgets.QComboBox(self.tab_6)
-        self.q_chinh_combobox_den.setGeometry(QtCore.QRect(240, 210, 111, 21))
+        self.q_chinh_combobox_den.setGeometry(QtCore.QRect(240, 290, 111, 21))
         self.q_chinh_combobox_den.setObjectName("q_chinh_combobox_den")
         self.q_chinh_combobox_den.addItem("")
         self.q_chinh_combobox_den.addItem("")
         self.q_chinh_combobox_den.addItem("")
         self.q_chinh_time_tu = QtWidgets.QTimeEdit(self.tab_6)
-        self.q_chinh_time_tu.setGeometry(QtCore.QRect(150, 330, 61, 20))
+        self.q_chinh_time_tu.setGeometry(QtCore.QRect(150, 410, 61, 20))
         self.q_chinh_time_tu.setObjectName("q_chinh_time_tu")
         self.q_chinh_search_button = QtWidgets.QPushButton(self.tab_6)
-        self.q_chinh_search_button.setGeometry(QtCore.QRect(440, 10, 51, 21))
+        self.q_chinh_search_button.setGeometry(QtCore.QRect(450, 10, 51, 21))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -1600,10 +1590,29 @@ class Ui_MainWindow(object):
         self.q_chinh_search_button.setText("")
         self.q_chinh_search_button.setObjectName("q_chinh_search_button")
         self.q_chinh_output_camera_address = QtWidgets.QLabel(self.tab_6)
-        self.q_chinh_output_camera_address.setGeometry(QtCore.QRect(130, 46, 361, 21))
+        self.q_chinh_output_camera_address.setGeometry(QtCore.QRect(130, 90, 371, 21))
         self.q_chinh_output_camera_address.setFrameShape(QtWidgets.QFrame.Box)
         self.q_chinh_output_camera_address.setText("")
         self.q_chinh_output_camera_address.setObjectName("q_chinh_output_camera_address")
+        self.q_chinh_camera_new_name = QtWidgets.QLineEdit(self.tab_6)
+        self.q_chinh_camera_new_name.setGeometry(QtCore.QRect(130, 130, 211, 21))
+        self.q_chinh_camera_new_name.setObjectName("q_chinh_camera_new_name")
+        self.label_83 = QtWidgets.QLabel(self.tab_6)
+        self.label_83.setGeometry(QtCore.QRect(10, 130, 121, 17))
+        self.label_83.setObjectName("label_83")
+        self.label_88 = QtWidgets.QLabel(self.tab_6)
+        self.label_88.setGeometry(QtCore.QRect(10, 50, 71, 17))
+        self.label_88.setObjectName("label_88")
+        self.q_chinh_camera_id = QtWidgets.QLabel(self.tab_6)
+        self.q_chinh_camera_id.setGeometry(QtCore.QRect(130, 50, 371, 21))
+        self.q_chinh_camera_id.setFrameShape(QtWidgets.QFrame.Box)
+        self.q_chinh_camera_id.setText("")
+        self.q_chinh_camera_id.setObjectName("q_chinh_camera_id")
+        self.q_chinh_rename_status = QtWidgets.QLabel(self.tab_6)
+        self.q_chinh_rename_status.setGeometry(QtCore.QRect(360, 130, 141, 21))
+        self.q_chinh_rename_status.setFrameShape(QtWidgets.QFrame.Box)
+        self.q_chinh_rename_status.setText("")
+        self.q_chinh_rename_status.setObjectName("q_chinh_rename_status")
         self.tabWidget.addTab(self.tab_6, "")
         self.report_tab.addTab(self.tab_4, "")
         self.tab_3 = QtWidgets.QWidget()
@@ -1635,9 +1644,9 @@ class Ui_MainWindow(object):
         self.b_t1_combobox_camera_name = QtWidgets.QComboBox(self.groupBox_plot1)
         self.b_t1_combobox_camera_name.setGeometry(QtCore.QRect(10, 30, 91, 21))
         self.b_t1_combobox_camera_name.setObjectName("b_t1_combobox_camera_name")
-        # self.b_t1_combobox_camera_name.addItem("")
-        # self.b_t1_combobox_camera_name.addItem("")
-        # self.b_t1_combobox_camera_name.addItem("")
+        self.b_t1_combobox_camera_name.addItem("")
+        self.b_t1_combobox_camera_name.addItem("")
+        self.b_t1_combobox_camera_name.addItem("")
         self.b_t1_date = QtWidgets.QDateEdit(self.groupBox_plot1)
         self.b_t1_date.setGeometry(QtCore.QRect(270, 30, 111, 21))
         self.b_t1_date.setObjectName("b_t1_date")
@@ -1666,11 +1675,13 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
         self.b_t1_table.setFont(font)
         self.b_t1_table.setGridStyle(QtCore.Qt.DashDotLine)
         self.b_t1_table.setWordWrap(True)
         self.b_t1_table.setRowCount(20000)
-        self.b_t1_table.setColumnCount(10)
+        self.b_t1_table.setColumnCount(9)
         self.b_t1_table.setObjectName("b_t1_table")
         item = QtWidgets.QTableWidgetItem()
         self.b_t1_table.setHorizontalHeaderItem(0, item)
@@ -1690,8 +1701,6 @@ class Ui_MainWindow(object):
         self.b_t1_table.setHorizontalHeaderItem(7, item)
         item = QtWidgets.QTableWidgetItem()
         self.b_t1_table.setHorizontalHeaderItem(8, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.b_t1_table.setHorizontalHeaderItem(9, item)
         self.b_t1_table.horizontalHeader().setDefaultSectionSize(73)
         self.b_t1_table.horizontalHeader().setMinimumSectionSize(123)
         self.b_t1_table.verticalHeader().setDefaultSectionSize(21)
@@ -1753,11 +1762,13 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
         self.b_t2_table.setFont(font)
         self.b_t2_table.setGridStyle(QtCore.Qt.DashDotLine)
         self.b_t2_table.setWordWrap(True)
         self.b_t2_table.setRowCount(20000)
-        self.b_t2_table.setColumnCount(10)
+        self.b_t2_table.setColumnCount(9)
         self.b_t2_table.setObjectName("b_t2_table")
         item = QtWidgets.QTableWidgetItem()
         self.b_t2_table.setHorizontalHeaderItem(0, item)
@@ -1777,8 +1788,6 @@ class Ui_MainWindow(object):
         self.b_t2_table.setHorizontalHeaderItem(7, item)
         item = QtWidgets.QTableWidgetItem()
         self.b_t2_table.setHorizontalHeaderItem(8, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.b_t2_table.setHorizontalHeaderItem(9, item)
         self.b_t2_table.horizontalHeader().setDefaultSectionSize(123)
         self.b_t2_table.horizontalHeader().setMinimumSectionSize(123)
         self.b_t2_table.verticalHeader().setDefaultSectionSize(21)
@@ -1801,6 +1810,7 @@ class Ui_MainWindow(object):
         self.q_chinh_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
         self.q_chinh_chinh_sua_button.setIcon(QtGui.QIcon('./icon/edit.png'))
         self.q_chinh_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+        self.q_chinh_delete_button.setIcon(QtGui.QIcon('./icon/delete.png'))
         # bao cao va thong ke
         self.b_t1_plot_button.setIcon(QtGui.QIcon('./icon/plot.png'))
         self.b_t1_save_button.setIcon(QtGui.QIcon('./icon/save.png'))
@@ -1827,6 +1837,7 @@ class Ui_MainWindow(object):
         # call display video
         global th
         th = Thread(MainWindow, self.g_tong_khong_kt)
+        # FOR REPORT AND STATISTICS TAB
         # plotting
         self.b_t1_combobox_kieu_thong_ke.activated.connect(self.change_plot_date_format_1)
         self.b_t2_combobox_kieu_thong_ke.activated.connect(self.change_plot_date_format_2)
@@ -1837,6 +1848,17 @@ class Ui_MainWindow(object):
         self.b_t2_save_button.clicked.connect(self.call_save_2)
         self.b_t1_export_button.clicked.connect(self.call_export_1)
         self.b_t2_export_button.clicked.connect(self.call_export_2)
+        # FOR CAMERAS MANAGEMENT TAB
+        # update camera information in camera management tab
+        self.camera_management_working_status()
+        # assign new camera id
+        self.q_moi_appy_button.clicked.connect(self.camera_management_assign_camera_id)
+        # add new camera
+        self.q_moi_add_button.clicked.connect(self.camera_management_add_new)
+        # draw new tracking region
+        self.q_moi_vung_quan_sat_button.clicked.connect(self.camera_management_draw_region_new)
+        # draw new counting line
+        self.q_moi_vach_kiem_dem_button.clicked.connect(self.camera_management_draw_counting_new)
         # -----
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -1851,12 +1873,14 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
         self.actionLock = QtWidgets.QAction(MainWindow)
         font = QtGui.QFont()
+        font.setPointSize(10)
         self.actionLock.setFont(font)
         self.actionLock.setObjectName("actionLock")
         self.actionExit = QtWidgets.QAction(MainWindow)
         self.actionExit.setObjectName("actionExit")
         self.exit = QtWidgets.QAction(MainWindow)
         font = QtGui.QFont()
+        font.setPointSize(10)
         self.exit.setFont(font)
         self.exit.setObjectName("exit")
         self.menuHome.addAction(self.actionLock)
@@ -1864,8 +1888,8 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuHome.menuAction())
         self.retranslateUi(MainWindow)
         self.report_tab.setCurrentIndex(1)
-        self.tabWidget_2.setCurrentIndex(1)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget_2.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     # FOR REPORT AND STATISTICS TAB
@@ -1948,7 +1972,6 @@ class Ui_MainWindow(object):
             for row in range(row_count):
                 for column in range(column_count):
                     item = str((list(return_data[row])[column]))
-                    print(item)
                     self.b_t2_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
             self.display_ploting_2.clear()
@@ -2022,26 +2045,201 @@ class Ui_MainWindow(object):
                                                save,
                                                export)
 
-    # FOR CAMERAS MANAGEMENT
-    def region(self):
-        global config_file
-        if not os.path.exists(config_file):
-            app_warning_function.camera_source_alarm()
-        else:
-            draw_region()
+    # FOR CAMERAS MANAGEMENT TAB
+    def camera_management_working_status(self):
+        global data_first_time
+        camera_infor = []
+        for i in range(len(data_first_time)):
+            camera_infor_item = [
+                data_first_time[i]["name"],
+                data_first_time[i]["url"],
+                data_first_time[i]["enable"],
+                data_first_time[i]["setting_time"],
+                data_first_time[i]["alarm_option"],
+                data_first_time[i]["light"],
+                data_first_time[i]["sound"]
+            ]
+            camera_infor.append(camera_infor_item)
+        column_count = len(camera_infor[0])
+        row_count = len(camera_infor)
+        for row in range(row_count):
+            for column in range(column_count):
+                item = str((list(camera_infor[row])[column]))
+                self.q_thong_tin_camera_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
-    def counting(self):
-        global config_file
-        if not os.path.exists(config_file):
-            app_warning_function.camera_source_alarm()
+    def camera_management_assign_camera_id(self):
+        global new_camera_id
+        new_camera_id = "xzy"
+
+    def camera_management_add_new(self):
+        global config_file, new_camera_id, new_camera_path, extra_pixels, draw_region_flag_new, draw_count_flag_new, \
+            draw_region_points, draw_counting_points
+
+        # check camera name
+        if len(self.q_moi_ten_camera.text()) == 0:
+            app_warning_function.check_camera_name()
         else:
-            draw_counting()
+            new_camera_name = self.q_moi_ten_camera.text()
+
+        # collect new camera address
+        new_camera_address = self.q_moi_dia_chi_camera.text()
+
+        # check status of new_camera_enable = "yes"
+        if self.q_moi_che_do.isChecked():
+            new_camera_enable = "yes"
+        else:
+            new_camera_enable = "no"
+
+        # check alarm_option
+        if self.q_moi_den.isChecked():
+            new_camera_alarm_option = "den bao"
+        elif self.q_moi_am_thanh.isChecked():
+            new_camera_alarm_option = "am thanh"
+        elif self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+            new_camera_alarm_option = "ca hai"
+
+        new_camera_sound_type = self.q_moi_combobox_am_thanh.currentText()
+        new_camera_light_type = self.q_moi_combobox_den.currentText()
+        new_camera_time_tu = self.q_moi_time_tu.text()
+        new_camera_time_den = self.q_moi_time_den.text()
+
+        # ----- get width, height of input
+        cap = cv2.VideoCapture(new_camera_address)
+        w = int(cap.get(3))
+        h = int(cap.get(4))
+        cap.release()
+        print("w,h: ", w,h)
+        # -----
+
+        # check draw_region_flag_new to get for if drawed or not
+        new_camera_tracking_region = []
+        if draw_region_flag_new:
+            new_camera_tracking_region = draw_region_points
+            draw_region_flag_new = False
+            draw_region_points = []
+            print("new_camera_tracking_region", new_camera_tracking_region)
+        else:
+            new_camera_tracking_region = create_default_region(w, h, extra_pixels)
+            print("new_camera_tracking_region - default", new_camera_tracking_region)
+
+        # check draw_count_flag_new to get for if drawed or not
+        new_camera_counting_line = []
+        if draw_count_flag_new:
+            counting_point = draw_counting_points
+            if len(counting_point) % 6 == 0:
+                j = 0
+                for i in range(0, len(counting_point), 6):
+                    j += 1
+                    item = {
+                        "id": f"Counting-{j}",
+                        "points": [counting_point[i], counting_point[i + 1], counting_point[i + 2],
+                                   counting_point[i + 3]],
+                        "direction_point": [counting_point[i + 4], counting_point[i + 5]]
+                    }
+                    new_camera_counting_line.append(item)
+                draw_count_flag_new = False
+                draw_counting_points = []
+            else:
+                app_warning_function.check_new_counting_lines()
+                draw_count_flag_new = False
+                draw_counting_points = []
+        else:
+            new_camera_counting_line = create_default_counting_line(w, h, extra_pixels)
+
+        # check camera id to add new camera into config file
+        if len(new_camera_id) < 2:
+            app_warning_function.check_new_camera_id()
+        else:
+            new_camera_data = {
+                "id": new_camera_id,
+                "name": new_camera_name,
+                "enable": new_camera_enable,
+                "alarm_option": new_camera_alarm_option,
+                "sound": new_camera_sound_type,
+                "light": new_camera_light_type,
+                "setting_time": [new_camera_time_tu, new_camera_time_den],
+                "url": new_camera_address,
+                "frame_drop": 1,
+                "frame_step": 1,
+                "tracking_scale": 0.5,
+                "ROIs": [
+                    {
+                        "caption": "ROI-1",
+                        "box": [0, 0, 1920, 1080],
+                        "show_point": [50, 150]
+                    }
+                ],
+                "tracking_regions": [
+                    {
+                        "id": "Tracking-1",
+                        "points": new_camera_tracking_region,
+                        "id_show_point": [965, 644],
+                        "trap_lines": {
+                            "unlimited_counts": new_camera_counting_line
+                        }
+                    }
+                ]
+            }
+
+            print(new_camera_data)
+
+            yaml.warnings({'YAMLLoadWarning': False})
+            with open(config_file, 'r') as fs_new:
+                config_new = yaml.load(fs_new)
+            cam_config_new = config_new["input"]["cam_config"]
+            with open(cam_config_new) as json_file_new:
+                json_data_new = json.load(json_file_new)
+            json_file_new.close()
+            # add new camera information
+            data_new = json_data_new["data"]
+            data_new.append(new_camera_data)
+            json_data_new["data"] = data_new
+            # write json file
+            with open(json_file_new.name, "w") as outfile_new:
+                json.dump(json_data_new, outfile_new)
+            outfile_new.close()
+
+    def camera_management_draw_region_new(self):
+        global new_camera_path, draw_region_flag_new
+
+        # check camera name
+        if len(self.q_moi_ten_camera.text()) == 0:
+            app_warning_function.check_camera_name()
+        else:
+            new_camera_name = self.q_moi_ten_camera.text()
+
+        # check camera address
+        # for IP camera
+        if self.q_moi_ipcamera.isChecked():
+            if len(self.q_moi_dia_chi_camera.text()) < 10:
+                app_warning_function.check_path_for_ip_camera()
+            else:
+                new_camera_address = self.q_moi_dia_chi_camera.text()
+                new_camera_path = new_camera_address
+
+            # for webcam ID
+        elif self.q_moi_webcam.isChecked():
+            if len(self.q_moi_dia_chi_camera.text()) > 10:
+                app_warning_function.check_path_for_webcam()
+            else:
+                new_camera_address = self.q_moi_dia_chi_camera.text()
+                new_camera_path = new_camera_address
+
+        if len(new_camera_path) != 0:
+            draw_region_flag_new = True
+            draw_region(new_camera_path)
+
+    def camera_management_draw_counting_new(self):
+        global draw_count_flag_new
+
+        draw_count_flag_new = True
+        draw_counting()
 
     def video(self):
         global config_file, count, width, height
         self.g_tong_khong_kt.display(count)
         if not os.path.exists(config_file):
-            app_warning_function.camera_source_alarm()
+            app_warning_function.camera_config_flie()
         else:
             self.g_hien_thi.resize(width, height)
             th.changePixmap.connect(self.setImage)
@@ -2049,6 +2247,8 @@ class Ui_MainWindow(object):
 
     def setImage(self, image):
         self.g_hien_thi.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    # FOR MAIN VIEW
 
     # def input_camera_source_path_and_name(self):
     #     global config_file
@@ -2145,39 +2345,44 @@ class Ui_MainWindow(object):
         item = self.g_ket_qua_chi_tiet_table.horizontalHeaderItem(2)
         item.setText(_translate("MainWindow", "SL người có khẩu trang(KT)"))
         item = self.g_ket_qua_chi_tiet_table.horizontalHeaderItem(3)
-        item.setText(_translate("MainWindow", "SL người không KT"))
+        item.setText(_translate("MainWindow", "SL người không có KT"))
         self.groupBox_4.setTitle(_translate("MainWindow", "Màn hình giám sát"))
         self.g_hien_thi.setText(_translate("MainWindow", "Display"))
         self.groupBox_7.setTitle(_translate("MainWindow", "Kết quả"))
-        self.label_106.setText(_translate("MainWindow", "Tổng SL người vào:"))
-        self.label_105.setText(_translate("MainWindow", "Tổng SL người không có KT:"))
-        self.label_109.setText(_translate("MainWindow", "Tổng SL người có KT:"))
+        self.label_106.setText(_translate("MainWindow", "Tổng SL người vào"))
+        self.label_105.setText(_translate("MainWindow", "Tổng SL người không có KT"))
+        self.label_109.setText(_translate("MainWindow", "Tổng SL người có KT"))
         self.groupBox_8.setTitle(_translate("MainWindow", "Thông tin khác"))
+        self.g_date_time.setText(_translate("MainWindow", "none"))
         self.report_tab.setTabText(self.report_tab.indexOf(self.tab), _translate("MainWindow", "Giám sát"))
         self.groupBox_10.setTitle(_translate("MainWindow", "Thông tin camera"))
         item = self.q_thong_tin_camera_table.horizontalHeaderItem(0)
-        item.setText(_translate("MainWindow", "Tên"))
+        item.setText(_translate("MainWindow", "Tên camera"))
         item = self.q_thong_tin_camera_table.horizontalHeaderItem(1)
         item.setText(_translate("MainWindow", "Địa chỉ"))
         item = self.q_thong_tin_camera_table.horizontalHeaderItem(2)
-        item.setText(_translate("MainWindow", "Chế độ"))
+        item.setText(_translate("MainWindow", "Chế độ hoạt động"))
         item = self.q_thong_tin_camera_table.horizontalHeaderItem(3)
-        item.setText(_translate("MainWindow", "Thời gian"))
+        item.setText(_translate("MainWindow", "Thời gian hoạt động"))
         item = self.q_thong_tin_camera_table.horizontalHeaderItem(4)
-        item.setText(_translate("MainWindow", "Cảnh báo"))
+        item.setText(_translate("MainWindow", "Chế độ cảnh báo"))
+        item = self.q_thong_tin_camera_table.horizontalHeaderItem(5)
+        item.setText(_translate("MainWindow", "Kiểu cảnh báo đèn"))
+        item = self.q_thong_tin_camera_table.horizontalHeaderItem(6)
+        item.setText(_translate("MainWindow", "Kiểu cảnh báo âm"))
         __sortingEnabled = self.q_thong_tin_camera_table.isSortingEnabled()
         self.q_thong_tin_camera_table.setSortingEnabled(False)
         self.q_thong_tin_camera_table.setSortingEnabled(__sortingEnabled)
         self.q_moi_webcam.setText(_translate("MainWindow", "Webcam"))
         self.label_98.setText(_translate("MainWindow", "Vùng quan sát"))
-        self.q_moi_combobox_den.setItemText(0, _translate("MainWindow", "Nhấp nháy"))
-        self.q_moi_combobox_den.setItemText(1, _translate("MainWindow", "Mặc định"))
-        self.q_moi_combobox_den.setItemText(2, _translate("MainWindow", "Nháy nhanh"))
+        self.q_moi_combobox_den.setItemText(0, _translate("MainWindow", "nhap nhay"))
+        self.q_moi_combobox_den.setItemText(1, _translate("MainWindow", "mac dinh"))
+        self.q_moi_combobox_den.setItemText(2, _translate("MainWindow", "nhay nhanh"))
         self.label_94.setText(_translate("MainWindow", "Đến"))
         self.label_95.setText(_translate("MainWindow", "Chế độ"))
-        self.q_moi_combobox_am_thanh.setItemText(0, _translate("MainWindow", "Còi cảnh sát"))
-        self.q_moi_combobox_am_thanh.setItemText(1, _translate("MainWindow", "Tiếng pip"))
-        self.q_moi_combobox_am_thanh.setItemText(2, _translate("MainWindow", "Âm cảm báo"))
+        self.q_moi_combobox_am_thanh.setItemText(0, _translate("MainWindow", "coi canh sat"))
+        self.q_moi_combobox_am_thanh.setItemText(1, _translate("MainWindow", "tieng pip"))
+        self.q_moi_combobox_am_thanh.setItemText(2, _translate("MainWindow", "am canh bao"))
         self.q_moi_den.setText(_translate("MainWindow", "Đèn báo"))
         self.label_77.setText(_translate("MainWindow", "Địa chỉ camera"))
         self.q_moi_am_thanh.setText(_translate("MainWindow", "Âm thanh"))
@@ -2189,6 +2394,7 @@ class Ui_MainWindow(object):
         self.q_moi_ca_hai.setText(_translate("MainWindow", "Cả hai"))
         self.label_78.setText(_translate("MainWindow", "Từ"))
         self.label_96.setText(_translate("MainWindow", "Chế độ cảnh báo"))
+        self.label_79.setText(_translate("MainWindow", "Camera ID"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), _translate("MainWindow", "Tạo mới camera"))
         self.label_99.setText(_translate("MainWindow", "Đến"))
         self.q_chinh_ca_hai.setText(_translate("MainWindow", "Cả hai"))
@@ -2209,6 +2415,8 @@ class Ui_MainWindow(object):
         self.q_chinh_combobox_den.setItemText(0, _translate("MainWindow", "Nhấp nháy"))
         self.q_chinh_combobox_den.setItemText(1, _translate("MainWindow", "Mặc định"))
         self.q_chinh_combobox_den.setItemText(2, _translate("MainWindow", "Nháy nhanh"))
+        self.label_83.setText(_translate("MainWindow", "Tên mới"))
+        self.label_88.setText(_translate("MainWindow", "Camera ID"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Chỉnh sửa camera"))
         self.report_tab.setTabText(self.report_tab.indexOf(self.tab_4), _translate("MainWindow", "Quản lí camera"))
         self.display_ploting_1.setText(_translate("MainWindow", "Biểu đồ 1"))
@@ -2217,24 +2425,22 @@ class Ui_MainWindow(object):
         self.b_t1_combobox_kieu_thong_ke.setItemText(1, _translate("MainWindow", "Thống kê theo Tháng"))
         self.b_t1_combobox_kieu_thong_ke.setItemText(2, _translate("MainWindow", "Thống kê theo Năm"))
         item = self.b_t1_table.horizontalHeaderItem(0)
-        item.setText(_translate("MainWindow", "Mã định danh"))
-        item = self.b_t1_table.horizontalHeaderItem(1)
         item.setText(_translate("MainWindow", "Tên camera"))
+        item = self.b_t1_table.horizontalHeaderItem(1)
+        item.setText(_translate("MainWindow", "SL người vào"))
         item = self.b_t1_table.horizontalHeaderItem(2)
-        item.setText(_translate("MainWindow", "SL vào"))
+        item.setText(_translate("MainWindow", "SL người có KT"))
         item = self.b_t1_table.horizontalHeaderItem(3)
-        item.setText(_translate("MainWindow", "SL có KT"))
+        item.setText(_translate("MainWindow", "SL người không có KT"))
         item = self.b_t1_table.horizontalHeaderItem(4)
-        item.setText(_translate("MainWindow", "SL không KT"))
-        item = self.b_t1_table.horizontalHeaderItem(5)
         item.setText(_translate("MainWindow", "Phút"))
-        item = self.b_t1_table.horizontalHeaderItem(6)
+        item = self.b_t1_table.horizontalHeaderItem(5)
         item.setText(_translate("MainWindow", "Giờ"))
-        item = self.b_t1_table.horizontalHeaderItem(7)
+        item = self.b_t1_table.horizontalHeaderItem(6)
         item.setText(_translate("MainWindow", "Ngày"))
-        item = self.b_t1_table.horizontalHeaderItem(8)
+        item = self.b_t1_table.horizontalHeaderItem(7)
         item.setText(_translate("MainWindow", "Tháng"))
-        item = self.b_t1_table.horizontalHeaderItem(9)
+        item = self.b_t1_table.horizontalHeaderItem(8)
         item.setText(_translate("MainWindow", "Năm"))
         self.display_ploting_2.setText(_translate("MainWindow", "Biểu đồ 2"))
         self.groupBox_plot1_2.setTitle(_translate("MainWindow", " Thông số 2"))
@@ -2242,24 +2448,22 @@ class Ui_MainWindow(object):
         self.b_t2_combobox_kieu_thong_ke.setItemText(1, _translate("MainWindow", "Thống kê theo Tháng"))
         self.b_t2_combobox_kieu_thong_ke.setItemText(2, _translate("MainWindow", "Thống kê theo Năm"))
         item = self.b_t2_table.horizontalHeaderItem(0)
-        item.setText(_translate("MainWindow", "Mã định danh"))
+        item.setText(_translate("MainWindow", "Tên"))
         item = self.b_t2_table.horizontalHeaderItem(1)
-        item.setText(_translate("MainWindow", "Tên camera"))
+        item.setText(_translate("MainWindow", "SL người vào"))
         item = self.b_t2_table.horizontalHeaderItem(2)
-        item.setText(_translate("MainWindow", "SL vào"))
+        item.setText(_translate("MainWindow", "SL người có KT"))
         item = self.b_t2_table.horizontalHeaderItem(3)
-        item.setText(_translate("MainWindow", "SL có KT"))
+        item.setText(_translate("MainWindow", "SL người không có KT"))
         item = self.b_t2_table.horizontalHeaderItem(4)
-        item.setText(_translate("MainWindow", "SL không KT"))
-        item = self.b_t2_table.horizontalHeaderItem(5)
         item.setText(_translate("MainWindow", "Phút"))
-        item = self.b_t2_table.horizontalHeaderItem(6)
+        item = self.b_t2_table.horizontalHeaderItem(5)
         item.setText(_translate("MainWindow", "Giờ"))
-        item = self.b_t2_table.horizontalHeaderItem(7)
+        item = self.b_t2_table.horizontalHeaderItem(6)
         item.setText(_translate("MainWindow", "Ngày"))
-        item = self.b_t2_table.horizontalHeaderItem(8)
+        item = self.b_t2_table.horizontalHeaderItem(7)
         item.setText(_translate("MainWindow", "Tháng"))
-        item = self.b_t2_table.horizontalHeaderItem(9)
+        item = self.b_t2_table.horizontalHeaderItem(8)
         item.setText(_translate("MainWindow", "Năm"))
         self.report_tab.setTabText(self.report_tab.indexOf(self.tab_3), _translate("MainWindow", "Báo cáo và Thống kê"))
         self.menuHome.setTitle(_translate("MainWindow", "Tùy chọn"))
@@ -2275,7 +2479,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setFixedSize(w_width, w_height)
         self.settings = QtCore.QSettings()
-        restore(self.settings)
+        # restore(self.settings)
         self.display_ploting_1.clear()
         self.display_ploting_2.clear()
 
