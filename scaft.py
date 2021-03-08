@@ -116,27 +116,205 @@
 # print(data_form_add)
 
 
-from pydub import AudioSegment
-from pydub.playback import play
-import threading
+# from pydub import AudioSegment
+# from pydub.playback import play
+# import threading
+#
+#
+# def play_audio(file):
+#     # Input an existing wav filename
+#     # wavFile = "police.mp3"
+#     # load the file into pydub
+#     sound = AudioSegment.from_file(file)
+#     print("Playing wav file...")
+#     # play the file
+#     play(sound)
+#
+#
+# def play_audio_by_threading(file):
+#     t = threading.Thread(target = play_audio, args = [file])
+#     t.start()
+#
+#
+# if __name__ == "__main__":
+#     # Input an existing wav filename
+#     wavFile = "./sound_alarm/police.mp3"
+#     play_audio_by_threading(wavFile)
+
+# def insert_data(self):
+#     data = [
+#         {"camera_name": "camera1", "status": "working"},
+#         {"camera_name": "camera2", "status": "stopped"},
+#         {"camera_name": "camera3", "status": "working"},
+#         {"camera_name": "camera4", "status": "working"}
+#     ]
+#
+#     row_count = (len(data))
+#     column_count = (len(data[0]))
+#     # self.table.setHorizontalHeaderLabels((list(data[0].keys())))
+#     for row in range(row_count):  # add items from array to QTableWidget
+#         for column in range(column_count):
+#             item = (list(data[row].values())[column])
+#             self.table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+#
+# def get_date(self):
+#     date = self.combo_box.currentText()
+#     if str(date) == "Ngày":
+#         self.display1.display(1)
+#         self.output.setText(str(1))
+#     elif str(date) == "Tháng":
+#         self.display1.display(2)
+#         self.output.setText(str(2))
+#     elif str(date) == "Năm":
+#         self.display1.display(3)
+#         self.output.setText(str(3))
+
+# # event
+# self.exit.triggered.connect(exit_app)
+
+# # icon
+# self.plot_1.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.save_1.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.export_1.setIcon(QtGui.QIcon('./icon/export.jpeg'))
+#
+# self.plot_5.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.save_5.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.export_5.setIcon(QtGui.QIcon('./icon/export.jpeg'))
+#
+# # event
+# self.comboBox_3.activated.connect(self.change_plot_date_format)
+#
+#
+# def change_plot_date_format(self):
+#     if self.comboBox_3.currentText() == "Thống kê theo Ngày":
+#         self.dateEdit.setDisplayFormat("dd/MM/yyyy")
+#     elif self.comboBox_3.currentText() == "Thống kê theo Tháng":
+#         self.dateEdit.setDisplayFormat("MM/yyyy")
+#     elif self.comboBox_3.currentText() == "Thống kê theo Năm":
+#         self.dateEdit.setDisplayFormat("yyyy")
 
 
-def play_audio(file):
-    # Input an existing wav filename
-    wavFile = "police.mp3"
-    # load the file into pydub
-    sound = AudioSegment.from_file(wavFile)
-    print("Playing wav file...")
-    # play the file
-    play(sound)
+# # ----- set icon
+# # giam sat
+# self.g_start_button.setIcon(QtGui.QIcon('./icon/start.jpg'))
+# self.g_stop_button.setIcon(QtGui.QIcon('./icon/stop.png'))
+# self.g_pause_play_button.setIcon(QtGui.QIcon('./icon/pause.png'))
+# # quan li camera
+# self.q_moi_vung_quan_sat_button.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_moi_vach_kiem_dem_button.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_moi_appy_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.q_moi_add_button.setIcon(QtGui.QIcon('./icon/add.jpg'))
+# self.q_moi_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# self.q_chinh_search_button.setIcon(QtGui.QIcon('./icon/search.png'))
+# self.q_chinh_vung_quan_sat.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_chinh_vach_kiem_dem.setIcon(QtGui.QIcon('./icon/draw.png'))
+# self.q_chinh_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.q_chinh_chinh_sua_button.setIcon(QtGui.QIcon('./icon/edit.png'))
+# self.q_chinh_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# # bao cao va thong ke
+# self.b_t1_plot_button.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.b_t1_save_button.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.b_t1_export_button.setIcon(QtGui.QIcon('./icon/export_data.png'))
+# self.b_t2_plot_button.setIcon(QtGui.QIcon('./icon/plot.png'))
+# self.b_t2_save_button.setIcon(QtGui.QIcon('./icon/save.png'))
+# self.b_t2_export_button.setIcon(QtGui.QIcon('./icon/export_data.png'))
+# # thong tin va thiet dat
+# self.t_server_sending_button.setIcon(QtGui.QIcon('./icon/sending.png'))
+# self.t_server_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.t_server_confirm_button.setIcon(QtGui.QIcon('./icon/update.png'))
+# self.t_server_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# self.t_pass_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+# self.t_pass_change_pass_button.setIcon(QtGui.QIcon('./icon/confirm.png'))
+# self.t_pass_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+# # -----
+
+# import sqlite3
+# def chk_conn(conn):
+#     try:
+#         conn.cursor()
+#         return True
+#     except Exception as ex:
+#         return False
+# conn_display1 = sqlite3.connect('./database/Face_Mask_Recognition_DataBase1.db')
+# print(chk_conn(conn_display1))
+# import pandas as pd
+# # fake_data = pd.read_csv('./data/fake_data.csv')
+# # print(fake_data.type)
+# import datetime
+#
+# object_id = "abcxyz"
+# camera_name = "C"
+# num_in = 10
+# num_mask = 7
+# num_no_mask = num_in-num_mask
+# data = datetime.datetime.now()
+# data_form = {"object_id": object_id,
+#              "camera_name": camera_name,
+#              "num_in": num_in,
+#              "num_mask": num_mask,
+#              "num_no_mask": num_no_mask,
+#              "minute": data.minute,
+#              "hour": data.hour,
+#              "day": data.day,
+#              "month": data.month,
+#              "year": data.year}
+#
+# insert_data = []
+# for i in range(10):
+#     insert_data.append(data_form)
+#
+# data_form_add = pd.DataFrame.from_dict([insert_data])
+# print(data_form_add)
+
+# def create_default_counting_line(w_in, h_in, extra_pixels_in):
+#     counting_line = [0 + extra_pixels_in, int(h_in / 2), w_in - extra_pixels_in, int(h_in / 2)]
+#     direction_point = [int(w_in / 2), int(h_in / 2) + 50]
+#     result = [
+#         {
+#             "id": "Counting-1",
+#             "points": counting_line,
+#             "direction_point": direction_point
+#         }
+#     ]
+#     return result
+#
+# w = 1080
+# h = 720
+# extra_pixels = 3
+#
+# c = create_default_counting_line(w, h, extra_pixels)
+# print(c)
 
 
-def play_audio_by_threading(file):
-    t = threading.Thread(target = play_audio, args = [file])
-    t.start()
+# def test():
+#     lst = [1,2,3,4,5,6,7,8,9,10,11,12]
+#     result = []
+#     j = 0
+#     for i in range(0,len(lst),6):
+#         j += 1
+#         item = {
+#             "id": f"Counting-{j}",
+#             "points": [lst[i], lst[i+1], lst[i+2], lst[i+3]],
+#             "direction_point": [lst[i+4], lst[i+5]]
+#         }
+#         print(item)
+#         result.append(item)
+#     return result
+#
+# z = test()
+# print(z)
 
+# lst = [1,2,3,4,5,6,7,8,9,10,11,12]
+# print(len(lst)%6 == 0)
 
-if __name__ == "__main__":
-    # Input an existing wav filename
-    wavFile = "./sound_alarm/police.mp3"
-    play_audio_by_threading(wavFile)
+a = [
+    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
+    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
+]
+
+b = [
+    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
+    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
+]
+
+print(a==b)

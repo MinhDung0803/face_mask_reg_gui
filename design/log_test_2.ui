@@ -18,7 +18,7 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>0</y>
+      <y>20</y>
       <width>891</width>
       <height>651</height>
      </rect>
@@ -28,7 +28,7 @@
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
-      <string>Tab 1</string>
+      <string>Main</string>
      </attribute>
      <widget class="QLabel" name="display_video">
       <property name="geometry">
@@ -1366,7 +1366,7 @@ p, li { white-space: pre-wrap; }
     </widget>
     <widget class="QWidget" name="tab_2">
      <attribute name="title">
-      <string>Tab 2</string>
+      <string>Report</string>
      </attribute>
      <widget class="QLabel" name="display_ploting_1">
       <property name="geometry">
@@ -1809,23 +1809,457 @@ p, li { white-space: pre-wrap; }
       </property>
      </widget>
     </widget>
+    <widget class="QWidget" name="tab_3">
+     <attribute name="title">
+      <string>Cameras Management</string>
+     </attribute>
+     <widget class="QGroupBox" name="groupBox_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>631</width>
+        <height>221</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Cameras Information</string>
+      </property>
+      <widget class="QLabel" name="label_7">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>131</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Number of camras:</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="number_of_cameras">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>30</y>
+         <width>21</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_8">
+       <property name="geometry">
+        <rect>
+         <x>210</x>
+         <y>30</y>
+         <width>211</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Maximum number of cameras:</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="number_of_cameras_2">
+       <property name="geometry">
+        <rect>
+         <x>430</x>
+         <y>30</y>
+         <width>21</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>4</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_9">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>60</y>
+         <width>21</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_name_1">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>60</y>
+         <width>91</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_path_1">
+       <property name="geometry">
+        <rect>
+         <x>160</x>
+         <y>60</y>
+         <width>361</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Path</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_10">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>90</y>
+         <width>21</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_path_2">
+       <property name="geometry">
+        <rect>
+         <x>160</x>
+         <y>90</y>
+         <width>361</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Path</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_name_2">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>90</y>
+         <width>91</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_11">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>120</y>
+         <width>21</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_path_3">
+       <property name="geometry">
+        <rect>
+         <x>160</x>
+         <y>120</y>
+         <width>361</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Path</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_name_3">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>120</y>
+         <width>91</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_12">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>150</y>
+         <width>21</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_path_4">
+       <property name="geometry">
+        <rect>
+         <x>160</x>
+         <y>150</y>
+         <width>361</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Path</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="m_camera_name_4">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>150</y>
+         <width>91</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="pushButton">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>180</y>
+         <width>101</width>
+         <height>31</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>UPDATE</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="m_delete_1">
+       <property name="geometry">
+        <rect>
+         <x>530</x>
+         <y>60</y>
+         <width>89</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>DELETE</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="m_delete_2">
+       <property name="geometry">
+        <rect>
+         <x>530</x>
+         <y>90</y>
+         <width>89</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>DELETE</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="m_delete_3">
+       <property name="geometry">
+        <rect>
+         <x>530</x>
+         <y>120</y>
+         <width>89</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>DELETE</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="m_delete_4">
+       <property name="geometry">
+        <rect>
+         <x>530</x>
+         <y>150</y>
+         <width>89</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>DELETE</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QGroupBox" name="groupBox_6">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>240</y>
+        <width>871</width>
+        <height>391</height>
+       </rect>
+      </property>
+      <property name="title">
+       <string>Cameras Addition</string>
+      </property>
+      <widget class="QGroupBox" name="groupBox_7">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>501</width>
+         <height>141</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>Source</string>
+       </property>
+       <widget class="QLabel" name="label_19">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>60</y>
+          <width>121</width>
+          <height>17</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Camera Name:</string>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="a_camera_name">
+        <property name="geometry">
+         <rect>
+          <x>130</x>
+          <y>60</y>
+          <width>261</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLineEdit" name="a_camera_address">
+        <property name="geometry">
+         <rect>
+          <x>130</x>
+          <y>90</y>
+          <width>261</width>
+          <height>21</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_20">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>90</y>
+          <width>121</width>
+          <height>17</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Camera Address:</string>
+        </property>
+       </widget>
+       <widget class="QRadioButton" name="radioButton_a_ip_camera">
+        <property name="geometry">
+         <rect>
+          <x>30</x>
+          <y>30</y>
+          <width>112</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>IP Camera</string>
+        </property>
+       </widget>
+       <widget class="QRadioButton" name="radioButton_a_webcam">
+        <property name="geometry">
+         <rect>
+          <x>190</x>
+          <y>30</y>
+          <width>112</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Webcam</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="geometry">
+         <rect>
+          <x>400</x>
+          <y>30</y>
+          <width>89</width>
+          <height>81</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>CONFIRM</string>
+        </property>
+       </widget>
+      </widget>
+     </widget>
+    </widget>
    </widget>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>900</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menuMain">
-    <property name="title">
-     <string>Main</string>
-    </property>
-   </widget>
-   <addaction name="menuMain"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

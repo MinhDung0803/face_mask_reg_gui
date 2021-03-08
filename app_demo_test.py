@@ -9,9 +9,6 @@ import threading
 import queue
 import json
 import yaml
-import pyglet
-from pydub import AudioSegment
-from pydub.playback import play
 import datetime
 
 import face_mask_threading
@@ -40,7 +37,6 @@ extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
 draw_region_flag = False
 draw_counting_points = []
-# default_counting_points = [[(0, int(height / 2)), (width, int(height / 2))]]
 draw_count_flag = False
 trigger_stop = 0
 set_working_time_flag = False
@@ -81,6 +77,7 @@ class Thread(QtCore.QThread):
         QtCore.QThread.__init__(self, parent)
         self._go = None
         self.display_no_face_mask_counting = display_no_face_mask_counting
+        # self.radioButton_light_option = radioButton_light_option
 
     def run(self):
         global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
@@ -147,6 +144,8 @@ class Thread(QtCore.QThread):
                     time.sleep(1)
                     self.stop_thread()
 
+                # self.radioButton_light_option.setChecked(True)
+
                 # get information form the queue
                 for cam_index in range(num_cam):
                     face_mask_output_data = face_mask_buffer[cam_index]
@@ -161,6 +160,58 @@ class Thread(QtCore.QThread):
                             # get number of no face mask person
                             event_count = list_count[0]["Person"]
 
+                            # event
+                            if count < event_count:
+                                count = event_count
+
+                                # update display_no_face_mask_counting
+                                self.display_no_face_mask_counting.setText(str(count))
+
+
+                                # insert data into database when detect new no-face-mask person
+                                # AND also check check setting time status
+                                if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
+                                    # check setting time (FROM)
+                                    information1_time = datetime.datetime.now()
+                                    print("Time1:", information1_time)
+                                    if (int(information1_time.hour) >= int(from_time_hour)) \
+                                            and (int(information1_time.minute) >= int(from_time_minute)):
+                                        data = datetime.datetime.now()
+                                        data_form = {"Camera_name": insert_name,
+                                                     "Minute": data.minute,
+                                                     "Hour": data.hour,
+                                                     "Day": data.day,
+                                                     "Month": data.month,
+                                                     "Year": data.year}
+                                        data_form_add = pd.DataFrame.from_dict([data_form])
+                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                        print("[INFO]-- Inserted data into Database")
+                                        conn_display.commit()
+                                else:
+                                    data = datetime.datetime.now()
+                                    data_form = {"Camera_name": insert_name,
+                                                 "Minute": data.minute,
+                                                 "Hour": data.hour,
+                                                 "Day": data.day,
+                                                 "Month": data.month,
+                                                 "Year": data.year}
+                                    data_form_add = pd.DataFrame.from_dict([data_form])
+                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                    print("[INFO]-- Inserted data into Database")
+                                    conn_display.commit()
+
+                                # active alarm
+                                if sound_alarm == 1:
+                                    print("[INFO]-- Sound")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                elif light_alarm == 1:
+                                    print("[INFO]-- Light")
+                                else:
+                                    print("[INFO]-- Sound and light")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+
                             # display on APP
                             result_frame = cv2.resize(frame_ori, (width, height))
                             rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
@@ -173,58 +224,6 @@ class Thread(QtCore.QThread):
 
                     else:
                         time.sleep(no_job_sleep_time)
-
-                # event
-                if count < event_count:
-                    count = event_count
-                    print("check")
-
-                    # update display_no_face_mask_counting
-                    self.display_no_face_mask_counting.setText(str(count))
-
-                    # insert data into database when detect new no-face-mask person
-                    # AND also check check setting time status
-                    if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
-                        # check setting time (FROM)
-                        information1_time = datetime.datetime.now()
-                        print("Time1:", information1_time)
-                        if (int(information1_time.hour) >= int(from_time_hour)) \
-                                and (int(information1_time.minute) >= int(from_time_minute)):
-                            data = datetime.datetime.now()
-                            data_form = {"Camera_name": insert_name,
-                                         "Minute": data.minute,
-                                         "Hour": data.hour,
-                                         "Day": data.day,
-                                         "Month": data.month,
-                                         "Year": data.year}
-                            data_form_add = pd.DataFrame.from_dict([data_form])
-                            data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                            print("[INFO]-- Inserted data into Database")
-                            conn_display.commit()
-                    else:
-                        data = datetime.datetime.now()
-                        data_form = {"Camera_name": insert_name,
-                                     "Minute": data.minute,
-                                     "Hour": data.hour,
-                                     "Day": data.day,
-                                     "Month": data.month,
-                                     "Year": data.year}
-                        data_form_add = pd.DataFrame.from_dict([data_form])
-                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                        print("[INFO]-- Inserted data into Database")
-                        conn_display.commit()
-
-                    # active alarm
-                    if sound_alarm == 1:
-                        print("[INFO]-- Sound")
-                        sound_file = "./sound_alarm/police.mp3"
-                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                    elif light_alarm == 1:
-                        print("[INFO]-- Light")
-                    else:
-                        print("[INFO]-- Sound and light")
-                        sound_file = "./sound_alarm/police.mp3"
-                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
 
                 # check setting time (TO) for STOP
                 information2_time = datetime.datetime.now()
@@ -283,14 +282,14 @@ def camera_source_alarm():
 
 def check_path_for_ip_camera():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("IP Camera Warning")
+    alert.setWindowTitle("Camera Source Warning")
     alert.setText('Wrong IP address for IPCamera! Please check again!')
     alert.exec_()
 
 
 def check_path_for_webcam():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Webcam Warning")
+    alert.setWindowTitle("a")
     alert.setText('Wrong ID for Webcam! Please check again!')
     alert.exec_()
 
@@ -348,6 +347,13 @@ def shape_selection_for_counting(event, x, y, flags, param):
         draw_counting_no_scale.append(x)
         draw_counting_no_scale.append(y)
         cv2.circle(image_counting, (ref_point_c[0], ref_point_c[1]), 4, (0, 255, 0), -2)
+        for i in range(0, len(draw_region_points_no_scale), 2):
+            if i + 3 > len(draw_region_points_no_scale):
+                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                         (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
+            else:
+                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                         (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
         cv2.imshow("Draw Counting Region", image_counting)
 
 
@@ -384,19 +390,20 @@ def draw_region():
         cv2.setMouseCallback("Draw Tracking Region", shape_selection_for_region)
         while True:
             cv2.imshow("Draw Tracking Region", image_region)
+            for i in range(0, len(draw_region_points_no_scale), 2):
+                if i + 3 > len(draw_region_points_no_scale):
+                    cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                             (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
+                else:
+                    cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
+                             (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
             key = cv2.waitKey(1)
             if key == 32:
                 # image = clone.copy()
                 draw_region_points = []
             elif key == 13:
                 break
-        for i in range(0, len(draw_region_points_no_scale), 2):
-            if i + 3 > len(draw_region_points_no_scale):
-                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
-                         (draw_region_points_no_scale[0], draw_region_points_no_scale[1]), (0, 255, 255), 1)
-            else:
-                cv2.line(image_region, (draw_region_points_no_scale[i], draw_region_points_no_scale[i + 1]),
-                         (draw_region_points_no_scale[i + 2], draw_region_points_no_scale[i + 3]), (0, 255, 255), 1)
+
     if os.path.exists('./draw/draw_region_image.jpg'):
         os.remove('./draw/draw_region_image.jpg')
     cv2.imwrite('./draw/draw_region_image.jpg', image_region)
@@ -457,7 +464,7 @@ def plotting(name_of_figure,
                 if elem[2] - 1 == i:
                     y[i] += 1
         plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
+        plt.plot(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
                   + str(year_input) + "-"
                   + str(month_input) + "-"
@@ -490,7 +497,7 @@ def plotting(name_of_figure,
                 if elem[3] - 1 == i:
                     y[i] += 1
         plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
+        plt.plot(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
                   + str(year_input) + "-"
                   + str(month_input) + "("
@@ -517,7 +524,7 @@ def plotting(name_of_figure,
                 if elem[4] - 1 == i:
                     y[i] += 1
         plt.figure(figsize=(10, 5))
-        plt.bar(x, y)
+        plt.plot(x, y)
         plt.title("Bar chart describes Number of No Face-Mask in "
                   + str(year_input) + "("
                   + str(len(return_data)) + ")")
@@ -729,7 +736,7 @@ class Ui_MainWindow(object):
         self.radioButton_light_and_sound_option = QtWidgets.QRadioButton(self.groupBox_3)
         self.radioButton_light_and_sound_option.setGeometry(QtCore.QRect(10, 110, 141, 23))
         self.radioButton_light_and_sound_option.setObjectName("radioButton_light_and_sound_option")
-        self.radioButton_light_and_sound_option.setChecked(True)
+        # self.radioButton_light_and_sound_option.setChecked(True)
 
         self.groupBox_4 = QtWidgets.QGroupBox(self.tab)
         self.groupBox_4.setGeometry(QtCore.QRect(660, 180, 221, 91))
@@ -1007,7 +1014,7 @@ class Ui_MainWindow(object):
         self.display_video.setPixmap(QtGui.QPixmap.fromImage(image))
 
     def input_camera_source_path_and_name(self):
-        global name, config_file
+        global config_file
         get_path = None
         camera_name = None
         data_path = self.source_path.text()
@@ -1016,8 +1023,6 @@ class Ui_MainWindow(object):
         # check for IP camera path
         if len(camera_name_source) == 0:
             check_camera_name()
-        else:
-            name = camera_name_source
         if self.radioButton_ip_camera.isChecked():
             if len(data_path) < 10:
                 check_path_for_ip_camera()
