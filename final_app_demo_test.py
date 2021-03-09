@@ -1537,9 +1537,9 @@ class Ui_MainWindow(object):
         self.q_chinh_combobox_am_thanh = QtWidgets.QComboBox(self.tab_6)
         self.q_chinh_combobox_am_thanh.setGeometry(QtCore.QRect(240, 330, 111, 21))
         self.q_chinh_combobox_am_thanh.setObjectName("q_chinh_combobox_am_thanh")
-        self.q_chinh_combobox_am_thanh.addItem("")
-        self.q_chinh_combobox_am_thanh.addItem("")
-        self.q_chinh_combobox_am_thanh.addItem("")
+        self.q_chinh_combobox_am_thanh.addItem("coi canh sat")
+        self.q_chinh_combobox_am_thanh.addItem("tieng pip")
+        self.q_chinh_combobox_am_thanh.addItem("am canh bao")
         self.label_103 = QtWidgets.QLabel(self.tab_6)
         self.label_103.setGeometry(QtCore.QRect(10, 94, 121, 17))
         self.label_103.setObjectName("label_103")
@@ -1578,9 +1578,9 @@ class Ui_MainWindow(object):
         self.q_chinh_combobox_den = QtWidgets.QComboBox(self.tab_6)
         self.q_chinh_combobox_den.setGeometry(QtCore.QRect(240, 290, 111, 21))
         self.q_chinh_combobox_den.setObjectName("q_chinh_combobox_den")
-        self.q_chinh_combobox_den.addItem("")
-        self.q_chinh_combobox_den.addItem("")
-        self.q_chinh_combobox_den.addItem("")
+        self.q_chinh_combobox_den.addItem("nhap nhay")
+        self.q_chinh_combobox_den.addItem("mac dinh")
+        self.q_chinh_combobox_den.addItem("nhay nhanh")
         self.q_chinh_time_tu = QtWidgets.QTimeEdit(self.tab_6)
         self.q_chinh_time_tu.setGeometry(QtCore.QRect(150, 410, 61, 20))
         self.q_chinh_time_tu.setObjectName("q_chinh_time_tu")
@@ -1872,8 +1872,10 @@ class Ui_MainWindow(object):
         self.q_chinh_delete_button.clicked.connect(self.camera_management_delete_camera)
         # edit camera infor
         self.q_chinh_chinh_sua_button.clicked.connect(self.camera_management_edit_camera_infor)
-        # test
-        self.q_chinh_combobox_am_thanh.setCurrentText("tieng pip")
+        # edit tracking region
+        self.q_chinh_vung_quan_sat.clicked.connect(self.camera_management_draw_region_edit)
+        # edit counting line
+        self.q_chinh_vach_kiem_dem.clicked.connect(self.camera_management_draw_counting_edit)
         # -----
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -2077,8 +2079,13 @@ class Ui_MainWindow(object):
                 working_status_data_parse[i]["sound"]
             ]
             camera_infor.append(camera_infor_item)
+
+        # clear old data and insert new data
+        # self.q_thong_tin_camera_table.clear()
+        self.q_thong_tin_camera_table.setRowCount(0)
         column_count = len(camera_infor[0])
         row_count = len(camera_infor)
+        self.q_thong_tin_camera_table.setRowCount(row_count)
         for row in range(row_count):
             for column in range(column_count):
                 item = str((list(camera_infor[row])[column]))
@@ -2114,7 +2121,10 @@ class Ui_MainWindow(object):
             new_camera_enable = "no"
 
         # check alarm_option
-        self.q_moi_am_thanh.setChecked(True)
+        if not self.q_moi_den.isChecked() and \
+                not self.q_moi_am_thanh.isChecked() and \
+                not self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+            self.q_moi_am_thanh.setChecked(True)
         if self.q_moi_den.isChecked():
             new_camera_alarm_option = "den bao"
         elif self.q_moi_am_thanh.isChecked():
@@ -2255,7 +2265,7 @@ class Ui_MainWindow(object):
 
     def camera_management_search_for_edit(self):
         global config_file
-        position_of_camera = None
+
         # check camera name
         if len(self.q_chinh_camera_name.text()) == 0:
             app_warning_function.check_camera_name()
@@ -2273,7 +2283,6 @@ class Ui_MainWindow(object):
                 position_of_camera = i
 
         if len(search_camera_infor) != 0:
-            # print("search camera informarion: ", search_camera_infor)
             self.q_chinh_camera_id.setText(search_camera_infor["id"])
             self.q_chinh_output_camera_address.setText(search_camera_infor["url"])
         else:
@@ -2281,16 +2290,43 @@ class Ui_MainWindow(object):
             self.q_chinh_output_camera_address.setText("None")
             app_warning_function.check_camera_in_config_file()
 
-        # display camera information
-        # for enable infor
-        if search_camera_infor["enable"] == "yes":
-            self.q_chinh_che_do.setChecked(True)
-        elif search_camera_infor["enable"] == "no":
-            self.q_chinh_che_do.setChecked(False)
+        if len(search_camera_infor) != 0:
+            # display camera information
+            # for enable infor
+            if search_camera_infor["enable"] == "yes":
+                self.q_chinh_che_do.setChecked(True)
+            elif search_camera_infor["enable"] == "no":
+                self.q_chinh_che_do.setChecked(False)
 
-        # alarm option
+            # alarm option
+            if search_camera_infor["alarm_option"] == "den bao":
+                self.q_chinh_den.setChecked(True)
+            elif search_camera_infor["alarm_option"] == "am thanh":
+                self.q_chinh_am_thanh.setChecked(True)
+            elif search_camera_infor["alarm_option"] == "ca hai":
+                self.q_chinh_ca_hai.setChecked(True)
 
-        return position_of_camera, data_edit
+            # alarm option - light type
+            if search_camera_infor["light"] == "nhay nhanh":
+                self.q_chinh_combobox_den.setCurrentText("nhay nhanh")
+            elif search_camera_infor["light"] == "nhap nhay":
+                self.q_chinh_combobox_den.setCurrentText("nhap nhay")
+            elif search_camera_infor["light"] == "mac dinh":
+                self.q_chinh_combobox_den.setCurrentText("mac dinh")
+
+            # alarm option - sound type
+            if search_camera_infor["sound"] == "coi canh sat":
+                self.q_chinh_combobox_am_thanh.setCurrentText("coi canh sat")
+            elif search_camera_infor["sound"] == "tieng pip":
+                self.q_chinh_combobox_am_thanh.setCurrentText("tieng pip")
+            elif search_camera_infor["sound"] == "am canh bao":
+                self.q_chinh_combobox_am_thanh.setCurrentText("am canh bao")
+
+            # setting time
+            self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
+                                                      int(search_camera_infor["setting_time"][0][3:5])))
+            self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
+                                                      int(search_camera_infor["setting_time"][1][3:5])))
 
     def camera_management_rename(self):
         if len(self.q_chinh_camera_new_name.text()) == 0:
@@ -2305,7 +2341,24 @@ class Ui_MainWindow(object):
 
     def camera_management_delete_camera(self):
         global config_file
-        position_of_camera_delete, data_delete = self.camera_management_search_for_edit()
+        position_of_camera_delete = None
+
+        # check camera name
+        if len(self.q_chinh_camera_name.text()) == 0:
+            app_warning_function.check_camera_name()
+        else:
+            delete_camera_name = self.q_chinh_camera_name.text()
+
+        # load config file for search camera name and edit
+        data_delete = read_config_file()
+        data_delete_parse = data_delete["data"]
+
+        search_camera_infor = []
+        for i in range(len(data_delete_parse)):
+            if delete_camera_name == data_delete_parse[i]["name"]:
+                search_camera_infor = data_delete_parse[i]
+                position_of_camera_delete = i
+
         # print("position_of_camera_delete, data_delete: ", position_of_camera_delete, data_delete)
         data_delete_parse = data_delete["data"]
         if position_of_camera_delete is not None:
@@ -2328,13 +2381,30 @@ class Ui_MainWindow(object):
 
     def camera_management_edit_camera_infor(self):
         global draw_region_points, draw_counting_points, config_file
-        position_of_camera_edit, data_edit = self.camera_management_search_for_edit()
+        position_of_camera_edit = None
+
+        # check camera name
+        if len(self.q_chinh_camera_name.text()) == 0:
+            app_warning_function.check_camera_name()
+        else:
+            edit_camera_name = self.q_chinh_camera_name.text()
+
+        # load config file for search camera name and edit
+        data_edit = read_config_file()
+        data_edit_parse = data_edit["data"]
+
+        search_camera_infor = []
+        for i in range(len(data_edit_parse)):
+            if edit_camera_name == data_edit_parse[i]["name"]:
+                search_camera_infor = data_edit_parse[i]
+                position_of_camera_edit = i
+
         if position_of_camera_edit is not None:
             data_edit_parse = data_edit["data"][position_of_camera_edit]
-            print(data_edit_parse)
+            # print(data_edit_parse)
 
             # check and replace if the camera data is difference
-            # for enable infor
+            # for enable information
             edit_camera_enable = None
             if self.q_chinh_che_do.isChecked():
                 edit_camera_enable = "yes"
@@ -2366,8 +2436,9 @@ class Ui_MainWindow(object):
                     app_warning_function.check_new_counting_lines()
                     draw_counting_points = []
 
-                    if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["unlimited_counts"]:
-                        data_edit_parse["tracking_regions"][0]["unlimited_counts"] = edit_camera_counting_line
+            if len(edit_camera_counting_line) != 0:
+                if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"]:
+                    data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"] = edit_camera_counting_line
 
             # for alarm option -  check alarm_option
             edit_camera_alarm_option = None
@@ -2382,7 +2453,7 @@ class Ui_MainWindow(object):
 
             # for sound type to alarm
             if self.q_chinh_combobox_am_thanh.currentText() != data_edit_parse["sound"]:
-                data_edit_parse["light"] = self.q_chinh_combobox_den.currentText()
+                data_edit_parse["sound"] = self.q_chinh_combobox_am_thanh.currentText()
 
             # for light type to alarm
             if self.q_chinh_combobox_den.currentText() != data_edit_parse["light"]:
@@ -2417,7 +2488,7 @@ class Ui_MainWindow(object):
     def camera_management_draw_counting_edit(self):
         draw_counting()
 
-    # FOR MAIN VIEW
+    # FOR MAIN VIEW TAB
     def video(self):
         global config_file, count, width, height
         self.g_tong_khong_kt.display(count)
@@ -2430,6 +2501,8 @@ class Ui_MainWindow(object):
 
     def setImage(self, image):
         self.g_hien_thi.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    # FOR INFORMATION AND SETTING TAB
 
 
     def retranslateUi(self, MainWindow):
@@ -2538,17 +2611,17 @@ class Ui_MainWindow(object):
         self.label_81.setText(_translate("MainWindow", "Tên camera"))
         self.q_chinh_den.setText(_translate("MainWindow", "Đèn báo"))
         self.label_82.setText(_translate("MainWindow", "Đặt thời gian"))
-        self.q_chinh_combobox_am_thanh.setItemText(0, _translate("MainWindow", "coi canh sat"))
-        self.q_chinh_combobox_am_thanh.setItemText(1, _translate("MainWindow", "tieng pip"))
-        self.q_chinh_combobox_am_thanh.setItemText(2, _translate("MainWindow", "am canh bao"))
+        # self.q_chinh_combobox_am_thanh.setItemText(0, _translate("MainWindow", "coi canh sat"))
+        # self.q_chinh_combobox_am_thanh.setItemText(1, _translate("MainWindow", "tieng pip"))
+        # self.q_chinh_combobox_am_thanh.setItemText(2, _translate("MainWindow", "am canh bao"))
         self.label_103.setText(_translate("MainWindow", "Địa chỉ camera"))
         self.label_104.setText(_translate("MainWindow", "Vạch kiểm đếm"))
         self.q_chinh_am_thanh.setText(_translate("MainWindow", "Âm thanh"))
         self.label_107.setText(_translate("MainWindow", "Vùng quan sát"))
         self.label_108.setText(_translate("MainWindow", "Từ"))
-        self.q_chinh_combobox_den.setItemText(0, _translate("MainWindow", "nhap nhay"))
-        self.q_chinh_combobox_den.setItemText(1, _translate("MainWindow", "mac dinh"))
-        self.q_chinh_combobox_den.setItemText(2, _translate("MainWindow", "nhay nhanh"))
+        # self.q_chinh_combobox_den.setItemText(0, _translate("MainWindow", "nhap nhay"))
+        # self.q_chinh_combobox_den.setItemText(1, _translate("MainWindow", "mac dinh"))
+        # self.q_chinh_combobox_den.setItemText(2, _translate("MainWindow", "nhay nhanh"))
         self.label_83.setText(_translate("MainWindow", "Tên mới"))
         self.label_88.setText(_translate("MainWindow", "Camera ID"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Chỉnh sửa camera"))

@@ -307,14 +307,15 @@
 # lst = [1,2,3,4,5,6,7,8,9,10,11,12]
 # print(len(lst)%6 == 0)
 
-a = [
-    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
-    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
-]
+a = [{'id': 'Counting-1', 'points': [822, 246, 978, 228], 'direction_point': [891, 180]},
+     {'id': 'Counting-2', 'points': [672, 468, 1179, 444], 'direction_point': [957, 537]}]
 
-b = [
-    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
-    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
-]
+b = [{"id":"Counting-1", "points":[ 10,
+                           540,
+                           1910,
+                           540],
+                        "direction_point":[
+                           960,
+                           590]}]
 
 print(a==b)
