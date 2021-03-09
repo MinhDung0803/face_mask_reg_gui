@@ -310,35 +310,56 @@
 import yaml
 import json
 
-data_item = {
-    "camera_name": None,
-    "person": 0,
-    "no_mask": 0,
-    "mask": 0,
-    "status": "stopped",
-    "setting_time": None
-}
+# data_item = {
+#     "camera_name": None,
+#     "person": 0,
+#     "no_mask": 0,
+#     "mask": 0,
+#     "status": "stopped",
+#     "setting_time": None
+# }
+#
+# # load dat in config file
+# config_file = "./configs/test_final.yml"
+# yaml.warnings({'YAMLLoadWarning': False})
+# with open(config_file, 'r') as fs:
+#     config = yaml.load(fs)
+# cam_config_first_time = config["input"]["cam_config"]
+# with open(cam_config_first_time) as json_file:
+#     json_data = json.load(json_file)
+# json_file.close()
+# data = json_data["data"]
+#
+# num_cam = 4
+#
+# list_data = [data_item.copy() for i in range(num_cam)]
+#
+# for cam_index in range(num_cam):
+#     # print(cam_index)
+#     list_data[cam_index]["camera_name"] = data[cam_index]["name"]
+#     print(list_data[cam_index])
+#
+#
+# print("list data: ", list_data)
 
-# load dat in config file
-config_file = "./configs/test_final.yml"
-yaml.warnings({'YAMLLoadWarning': False})
-with open(config_file, 'r') as fs:
-    config = yaml.load(fs)
-cam_config_first_time = config["input"]["cam_config"]
-with open(cam_config_first_time) as json_file:
-    json_data = json.load(json_file)
-json_file.close()
-data = json_data["data"]
+# import password_threading
+#
+# old_password = "dungpm@greenglobal.vn"
+#
+# password_threading.password_by_threading()
+import cv2
 
-num_cam = 4
+cap = cv2.VideoCapture("/home/gg-greenlab/Videos/vlc-record-2021-03-09-16h29m05s-rtsp___58.186.75.67_5556-.mp4")
 
-list_data = [data_item.copy() for i in range(num_cam)]
+# ret, frame = cap.read()
+while True:
+    ret, frame = cap.read()
+    if ret:
+        cv2.imshow("show", frame)
 
-for cam_index in range(num_cam):
-    # print(cam_index)
-    list_data[cam_index]["camera_name"] = data[cam_index]["name"]
-    print(list_data[cam_index])
+        key = cv2.waitKey(1)
+        if key == ord("q"):
+            break
 
-
-print("list data: ", list_data)
-# print("data: ", data)
+cap.release()
+cv2.destroyAllWindows()

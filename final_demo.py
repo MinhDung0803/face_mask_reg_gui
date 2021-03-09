@@ -33,6 +33,7 @@ light_alarm = 0
 sound_alarm = 0
 both_alarm = 1
 trigger_stop = 0
+trigger_pause = 0
 
 draw_region_points = []
 draw_counting_points = []
@@ -119,15 +120,20 @@ def create_default_counting_line(w_in, h_in, extra_pixels_in):
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, parent, g_tong_khong_kt):
+    def __init__(self, parent, g_tong_vao, g_tong_kt, g_tong_khong_kt, g_ket_qua_chi_tiet_table, g_tt_hoat_dong_table):
+
         QtCore.QThread.__init__(self, parent)
         self._go = None
+        # need to be update from MainWindow
+        self.g_tong_vao = g_tong_vao
+        self.g_tong_kt = g_tong_kt
         self.g_tong_khong_kt = g_tong_khong_kt
-        # self.radioButton_light_option = radioButton_light_option
+        self.g_ket_qua_chi_tiet_table = g_ket_qua_chi_tiet_table
+        self.g_tt_hoat_dong_table = g_tt_hoat_dong_table
 
     def run(self):
         global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
-            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute
+            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute, trigger_pause
 
         # # connect to sql database
         conn_display = sqlite3.connect('./database/final_data_base.db')
@@ -137,20 +143,12 @@ class Thread(QtCore.QThread):
         self._go = True
 
         # get information from config_file
-        yaml.warnings({'YAMLLoadWarning': False})
-        with open(config_file, 'r') as fs:
-            config = yaml.load(fs)
-            # config = yaml.load(fs, Loader=yaml.FullLoader)
-
-        cam_config = config["input"]["cam_config"]
-
-        with open(cam_config) as json_file:
-            json_data = json.load(json_file)
-        json_file.close()
-
+        json_data = read_config_file()
         cam_infor_list = json_data["data"]
+
         insert_name = json_data["data"][0]["name"]
 
+        # parse all information of each camera
         input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
         tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
 
@@ -166,7 +164,7 @@ class Thread(QtCore.QThread):
         no_job_sleep_time = (1 / max_fps) / 10
 
         # create face_mask buffer, forward_message and backward_message
-        face_mask_buffer = [queue.Queue(100) for i in range(num_cam)]
+        face_mask_buffer = [queue.Queue(50) for i in range(num_cam)]
 
         forward_message = queue.Queue()
         backward_message = queue.Queue()
@@ -179,8 +177,25 @@ class Thread(QtCore.QThread):
         face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
                                                    wait_stop, no_job_sleep_time)
 
-        # event count to update no face mask person and active alarm mode
-        event_count = 0
+        # # event count to update no face mask person and active alarm mode
+        # event_count = 0
+
+        # prepare data for updating and alarm
+        data_item = data_item = {
+            "camera_name": None,
+            "person": 0,
+            "no_mask": 0,
+            "mask": 0,
+            "status": "stopped",
+            "setting_time": None
+        }
+
+        core_data = [data_item.copy() for i in range(num_cam)]
+
+        for cam_index in range(num_cam):
+            if cam_infor_list[cam_index]["enable"] == "yes":
+                core_data[cam_index]["camera_name"] = cam_infor_list[cam_index]["name"]
+                core_data[cam_index]["setting_time"] = cam_infor_list[cam_index]["setting_time"]
 
         while self._go:
             if os.path.exists(config_file):
@@ -189,6 +204,11 @@ class Thread(QtCore.QThread):
                     trigger_stop = 0
                     time.sleep(1)
                     self.stop_thread()
+
+                if trigger_pause == 1:
+                    forward_message.put("pause/unpause")
+                    trigger_pause = 0
+                    time.sleep(1)
 
                 # self.radioButton_light_option.setChecked(True)
 
@@ -316,6 +336,11 @@ class Thread(QtCore.QThread):
 def close_window():
     global trigger_stop
     trigger_stop = 1
+
+
+def pause_unpause():
+    global trigger_pause
+    trigger_pause = 1
 
 
 def shape_selection_for_region(event, x, y, flags, param):
@@ -750,7 +775,7 @@ class Ui_MainWindow(object):
         self.g_tt_hoat_dong_table.setItem(1, 0, item)
         item = QtWidgets.QTableWidgetItem()
         self.g_tt_hoat_dong_table.setItem(1, 1, item)
-        self.g_tt_hoat_dong_table.horizontalHeader().setDefaultSectionSize(123)
+        self.g_tt_hoat_dong_table.horizontalHeader().setDefaultSectionSize(132)
         self.g_tt_hoat_dong_table.horizontalHeader().setMinimumSectionSize(58)
         self.g_tt_hoat_dong_table.verticalHeader().setDefaultSectionSize(21)
         self.g_start_button = QtWidgets.QPushButton(self.groupBox_5)
@@ -808,7 +833,7 @@ class Ui_MainWindow(object):
         self.g_ket_qua_chi_tiet_table.setHorizontalHeaderItem(2, item)
         item = QtWidgets.QTableWidgetItem()
         self.g_ket_qua_chi_tiet_table.setHorizontalHeaderItem(3, item)
-        self.g_ket_qua_chi_tiet_table.horizontalHeader().setDefaultSectionSize(123)
+        self.g_ket_qua_chi_tiet_table.horizontalHeader().setDefaultSectionSize(124)
         self.g_ket_qua_chi_tiet_table.verticalHeader().setDefaultSectionSize(21)
         self.groupBox_4 = QtWidgets.QGroupBox(self.tab)
         self.groupBox_4.setGeometry(QtCore.QRect(280, 0, 791, 461))
@@ -1871,13 +1896,23 @@ class Ui_MainWindow(object):
 
         # -----
         # EVENTS
+
+        # FOR MAIN VIEW TAB
         # start video
         self.g_start_button.clicked.connect(self.video)
         # stop video
         self.g_stop_button.clicked.connect(close_window)
+        # pause/unpause
+        self.g_pause_play_button.clicked.connect(pause_unpause)
         # call display video
         global th
-        th = Thread(MainWindow, self.g_tong_khong_kt)
+        th = Thread(MainWindow, self.g_tong_vao, self.g_tong_kt, self.g_tong_khong_kt, self.g_ket_qua_chi_tiet_table,
+                    self.g_tt_hoat_dong_table)
+        # update camera working status
+        self.camera_working_status()
+        # update detail counting result
+        self.detail_counting_results()
+
         # FOR REPORT AND STATISTICS TAB
         # plotting
         self.b_t1_combobox_kieu_thong_ke.activated.connect(self.change_plot_date_format_1)
@@ -1885,13 +1920,15 @@ class Ui_MainWindow(object):
         self.update_combobox()  # for update all camera names in configuration file
         self.b_t1_plot_button.clicked.connect(self.call_plotting_1)
         self.b_t2_plot_button.clicked.connect(self.call_plotting_2)
+        # save and export
         self.b_t1_save_button.clicked.connect(self.call_save_1)
         self.b_t2_save_button.clicked.connect(self.call_save_2)
         self.b_t1_export_button.clicked.connect(self.call_export_1)
         self.b_t2_export_button.clicked.connect(self.call_export_2)
+
         # FOR CAMERAS MANAGEMENT TAB
         # update camera information in camera management tab
-        self.camera_management_working_status()
+        self.camera_management()
         # assign new camera id
         self.q_moi_appy_button.clicked.connect(self.camera_management_assign_camera_id)
         # add new camera
@@ -1912,6 +1949,8 @@ class Ui_MainWindow(object):
         self.q_chinh_vung_quan_sat.clicked.connect(self.camera_management_draw_region_edit)
         # edit counting line
         self.q_chinh_vach_kiem_dem.clicked.connect(self.camera_management_draw_counting_edit)
+
+        # FOR INFORMATION AND SETTING TAB
         # password change
         self.t_pass_change_pass_button.clicked.connect(self.password_changing)
         # unhide and hide in password tab
@@ -2110,7 +2149,7 @@ class Ui_MainWindow(object):
                                                export)
 
     # FOR CAMERAS MANAGEMENT TAB
-    def camera_management_working_status(self):
+    def camera_management(self):
         working_status_data = read_config_file()
         working_status_data_parse = working_status_data["data"]
         camera_infor = []
@@ -2127,7 +2166,6 @@ class Ui_MainWindow(object):
             camera_infor.append(camera_infor_item)
 
         # clear old data and insert new data
-        # self.q_thong_tin_camera_table.clear()
         self.q_thong_tin_camera_table.setRowCount(0)
         column_count = len(camera_infor[0])
         row_count = len(camera_infor)
@@ -2275,9 +2313,13 @@ class Ui_MainWindow(object):
                 json.dump(json_data_new, outfile_new)
             outfile_new.close()
 
-        # call for update combobox and camera working status
+        # call for stop all threading and update combobox and camera working status
+        close_window()
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
+        self.camera_working_status()
+        self.detail_counting_results()
+        app_warning_function.stop_all_thread()
 
     def camera_management_draw_region_new(self):
         global new_camera_path, draw_region_flag_new
@@ -2383,7 +2425,7 @@ class Ui_MainWindow(object):
         # sending request to rename API and return status to rename in config file
         # call for update combobox and camera working status
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
 
     def camera_management_delete_camera(self):
         global config_file
@@ -2423,7 +2465,7 @@ class Ui_MainWindow(object):
             outfile_delete.close()
         # call for update combobox and camera working status
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
 
     def camera_management_edit_camera_infor(self):
         global draw_region_points, draw_counting_points, config_file
@@ -2482,7 +2524,7 @@ class Ui_MainWindow(object):
                     app_warning_function.check_new_counting_lines()
                     draw_counting_points = []
 
-            if len(edit_camera_counting_line) != 0:
+
                 if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"]:
                     data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"] = edit_camera_counting_line
 
@@ -2521,9 +2563,14 @@ class Ui_MainWindow(object):
             with open(cam_config_edit, "w") as outfile_edit:
                 json.dump(data_edit, outfile_edit)
             outfile_edit.close()
-            # call for update combobox and camera working status
+
+        # call for stop all threading and update combobox and camera working status
+        close_window()
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
+        self.camera_working_status()
+        self.detail_counting_results()
+        app_warning_function.stop_all_thread()
 
     def camera_management_draw_region_edit(self):
         camera_path_edit = self.q_chinh_output_camera_address.text()
@@ -2547,6 +2594,58 @@ class Ui_MainWindow(object):
 
     def setImage(self, image):
         self.g_hien_thi.setPixmap(QtGui.QPixmap.fromImage(image))
+
+    def camera_working_status(self):
+        working_status_config_file_data = read_config_file()
+        working_status_camera_data = working_status_config_file_data["data"]
+
+        working_status_item = {
+            "camera_name": "",
+            "working_status": ""
+        }
+
+        working_status_data = [working_status_item.copy() for i in range(len(working_status_camera_data))]
+
+        for index in range(len(working_status_camera_data)):
+            working_status_data[index]["camera_name"] = working_status_camera_data[index]["name"]
+            if working_status_camera_data[index]["enable"] == "yes":
+                working_status_data[index]["working_status"] = "ready"
+            else:
+                working_status_data[index]["working_status"] = "disabled"
+
+        self.g_tt_hoat_dong_table.setRowCount(0)
+        column_count = len(working_status_data[0])
+        row_count = len(working_status_data)
+        self.g_tt_hoat_dong_table.setRowCount(row_count)
+        for row in range(row_count):
+            for column in range(column_count):
+                item = str((list(working_status_data[row].values())[column]))
+                self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+
+    def detail_counting_results(self):
+        detail_counting_results_config_file_data = read_config_file()
+        detail_counting_results_camera_data = detail_counting_results_config_file_data["data"]
+
+        detail_counting_results_item = {
+            "camera_name": "",
+            "person": 0,
+            "mask": 0,
+            "no_mask": 0,
+        }
+
+        detail_counting_results_data = [detail_counting_results_item.copy() for i in range(len(detail_counting_results_camera_data))]
+
+        for index in range(len(detail_counting_results_camera_data)):
+            detail_counting_results_data[index]["camera_name"] = detail_counting_results_camera_data[index]["name"]
+
+        self.g_ket_qua_chi_tiet_table.setRowCount(0)
+        column_count = len(detail_counting_results_data[0])
+        row_count = len(detail_counting_results_data)
+        self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
+        for row in range(row_count):
+            for column in range(column_count):
+                item = str((list(detail_counting_results_data[row].values())[column]))
+                self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
     # FOR INFORMATION AND SETTING TAB
     def setting(self):
@@ -2576,7 +2675,6 @@ class Ui_MainWindow(object):
             json.dump(setting_data, outfile_setting)
         outfile_setting.close()
 
-    # FOR LOCK ACTION
     def lock(self):
         global lock_trigger
         lock_trigger = not lock_trigger

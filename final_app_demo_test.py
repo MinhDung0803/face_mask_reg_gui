@@ -833,7 +833,7 @@ class Ui_MainWindow(object):
         self.g_ket_qua_chi_tiet_table.setHorizontalHeaderItem(2, item)
         item = QtWidgets.QTableWidgetItem()
         self.g_ket_qua_chi_tiet_table.setHorizontalHeaderItem(3, item)
-        self.g_ket_qua_chi_tiet_table.horizontalHeader().setDefaultSectionSize(124)
+        self.g_ket_qua_chi_tiet_table.horizontalHeader().setDefaultSectionSize(128)
         self.g_ket_qua_chi_tiet_table.verticalHeader().setDefaultSectionSize(21)
         self.groupBox_4 = QtWidgets.QGroupBox(self.tab)
         self.groupBox_4.setGeometry(QtCore.QRect(280, 0, 791, 461))
