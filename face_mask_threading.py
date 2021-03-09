@@ -232,10 +232,10 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
     # -----
 
 
-    list_frame_image_buffer = [queue.Queue(10) for i in range(num_cam)]
-    list_detected_buffer = [queue.Queue(10) for i in range(num_cam)]
-    list_trackted_buffer = [queue.Queue(10) for i in range(num_cam)]
-    export_data_buffer = queue.Queue(100)  # unlimited
+    list_frame_image_buffer = [queue.Queue(50) for i in range(num_cam)]
+    list_detected_buffer = [queue.Queue(50) for i in range(num_cam)]
+    list_trackted_buffer = [queue.Queue(50) for i in range(num_cam)]
+    export_data_buffer = queue.Queue(50)  # unlimited
 
     gd.set_ref_export_data_buffer(export_data_buffer)
     # gd.set_backward_message(backward_message)
@@ -536,6 +536,7 @@ def parser_cam_infor(cam_infor_list):
         # print("tracking_regions_data: ", tracking_regions_data)
         tracking_region_list = region_util.create_tracking_regions(tracking_regions_data)
 
+        # if cam_infor["enable"] == "yes":
         cam_id_list.append(id)
         input_video_list.append(url)
         frame_drop_list.append(frame_drop)

@@ -63,10 +63,50 @@ def check_alarm_option():
     alert.exec_()
 
 
+# kiểm tra nhập password cho quá trình đổi pass
+def check_password_input():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText("Làm ơn nhập đúng password cũ và thực hiện nhập password mới!")
+    alert.exec_()
+
+
+# kiểm old password cho quá trình đổi pass
+def check_password_old():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText("Password cũ chưa chính xác, làm ơn kiểm tra và nhập lại!")
+    alert.exec_()
+
+
+# kiểm old password cho quá trình đổi pass
+def check_lenght_password_new():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText("Password mới cần có ít nhất 10 kí tự, làm ơn kiểm tra và nhập lại!")
+    alert.exec_()
+
+
+# Đổi password thành công
+def check_password_changed_succesfully():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText("Password đã được đổi thành công, xin cảm !")
+    alert.exec_()
+
+
+# kiểm tra new password and confirm password
+def check_password_new_and_confirm_new():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText("Password mới và xác nhận Password mới hiện không đồng nhất, làm ơn kiểm tra và nhập lại!")
+    alert.exec_()
+
+
 def check_config_file():
     alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Loading config file")
-    alert.setText('There are no config file, please check again!')
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText('Không tìm thấy tập tin thiết đặt cho các camera, làm ơn kiểm tra lại!')
     alert.exec_()
 
 
@@ -77,27 +117,22 @@ def check_camera_name():
     alert.exec_()
 
 
-def check_camera_name_plotting():
-    alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Camera Name for Statistics Warning")
-    alert.setText('Please input the name of Camera to query in Database!')
-    alert.exec_()
-
-
-def check_setting_time():
-    alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Setting Time Warning")
-    alert.setText('Wrong time information has been input, please check again!')
-    alert.exec_()
-
 def plotting_no_data_warning():
     alert = QtWidgets.QMessageBox()
     alert.setWindowTitle("Cảnh báo")
     alert.setText('Hiện tại không có thông tin cho thời gian và camera đã nhập, làm ơn kiểm tra lại!')
     alert.exec_()
 
+
 def query_camera_id_warning():
     alert = QtWidgets.QMessageBox()
     alert.setWindowTitle("Cảnh báo")
     alert.setText('Hiện tại Camera này chưa được đăng kí hoặc mất trường thông tin Camera Id, làm ơn kiểm tra lại!')
+    alert.exec_()
+
+def stop_all_thread():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText('Thay đổi về cấu hình camera được ghi nhận, toàn bộ tiến trình đang chạy(nếu có) sẽ được dừng để '
+                  'đảm bảo thông tin, vui lòng kích hoạt lại!')
     alert.exec_()

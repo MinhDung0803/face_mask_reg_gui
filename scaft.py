@@ -307,15 +307,38 @@
 # lst = [1,2,3,4,5,6,7,8,9,10,11,12]
 # print(len(lst)%6 == 0)
 
-a = [{'id': 'Counting-1', 'points': [822, 246, 978, 228], 'direction_point': [891, 180]},
-     {'id': 'Counting-2', 'points': [672, 468, 1179, 444], 'direction_point': [957, 537]}]
+import yaml
+import json
 
-b = [{"id":"Counting-1", "points":[ 10,
-                           540,
-                           1910,
-                           540],
-                        "direction_point":[
-                           960,
-                           590]}]
+data_item = {
+    "camera_name": None,
+    "person": 0,
+    "no_mask": 0,
+    "mask": 0,
+    "status": "stopped",
+    "setting_time": None
+}
 
-print(a==b)
+# load dat in config file
+config_file = "./configs/test_final.yml"
+yaml.warnings({'YAMLLoadWarning': False})
+with open(config_file, 'r') as fs:
+    config = yaml.load(fs)
+cam_config_first_time = config["input"]["cam_config"]
+with open(cam_config_first_time) as json_file:
+    json_data = json.load(json_file)
+json_file.close()
+data = json_data["data"]
+
+num_cam = 4
+
+list_data = [data_item.copy() for i in range(num_cam)]
+
+for cam_index in range(num_cam):
+    # print(cam_index)
+    list_data[cam_index]["camera_name"] = data[cam_index]["name"]
+    print(list_data[cam_index])
+
+
+print("list data: ", list_data)
+# print("data: ", data)
