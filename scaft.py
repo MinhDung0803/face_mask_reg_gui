@@ -307,14 +307,240 @@
 # lst = [1,2,3,4,5,6,7,8,9,10,11,12]
 # print(len(lst)%6 == 0)
 
-a = [
-    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
-    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
-]
+import yaml
+import json
 
-b = [
-    {"id": "Counting-1", "points": [0, 700, 1920, 700], "direction_point": [1000, 500]},
-    {"id": "Counting-2", "points": [0, 720, 1920, 720], "direction_point": [800, 800]}
-]
+# data_item = {
+#     "camera_name": None,
+#     "person": 0,
+#     "no_mask": 0,
+#     "mask": 0,
+#     "status": "stopped",
+#     "setting_time": None
+# }
+#
+# # load dat in config file
+# config_file = "./configs/test_final.yml"
+# yaml.warnings({'YAMLLoadWarning': False})
+# with open(config_file, 'r') as fs:
+#     config = yaml.load(fs)
+# cam_config_first_time = config["input"]["cam_config"]
+# with open(cam_config_first_time) as json_file:
+#     json_data = json.load(json_file)
+# json_file.close()
+# data = json_data["data"]
+#
+# num_cam = 4
+#
+# list_data = [data_item.copy() for i in range(num_cam)]
+#
+# for cam_index in range(num_cam):
+#     # print(cam_index)
+#     list_data[cam_index]["camera_name"] = data[cam_index]["name"]
+#     print(list_data[cam_index])
+#
+#
+# print("list data: ", list_data)
 
-print(a==b)
+# import password_threading
+# import cv2
+# old_password = "dungpm@greenglobal.vn"
+# # password_threading.password_by_threading()
+# cap = cv2.VideoCapture("rtsp://admin:Admin123@192.168.111.211/1")
+# # ret, frame = cap.read()
+# while True:
+#     ret, frame = cap.read()
+#     frame = cv2.resize(frame, (480, 360))
+#     if ret:
+#         cv2.imshow("show", frame)
+#         key = cv2.waitKey(1)
+#         if key == ord("c"):
+#             password_threading.password_by_threading()
+#         if key == ord("q"):
+#             break
+# cap.release()
+# cv2.destroyAllWindows()
+
+# from PyQt5.QtGui import QApplication, QMainWindow, QPushButton, \
+#             QLabel, QVBoxLayout, QWidget
+# from PyQt5.QtCore import pyqtSignal
+
+# from PyQt5 import QtCore, QtGui, QtWidgets
+# import threading
+#
+# hide_trigger = False
+# w_width = 400
+# w_height = 150
+#
+#
+# class Ui_Password(object):
+#     def setupUi(self, Password):
+#
+#         # self.input_pass = input_pass
+#
+#         Password.setObjectName("Password")
+#         Password.resize(400, 139)
+#         self.centralwidget = QtWidgets.QWidget(Password)
+#         self.centralwidget.setObjectName("centralwidget")
+#         self.label = QtWidgets.QLabel(self.centralwidget)
+#         self.label.setGeometry(QtCore.QRect(0, 10, 391, 20))
+#         self.label.setAlignment(QtCore.Qt.AlignCenter)
+#         self.label.setObjectName("label")
+#         self.pass_input = QtWidgets.QLineEdit(self.centralwidget)
+#         self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+#         self.pass_input.setGeometry(QtCore.QRect(10, 40, 381, 25))
+#         self.pass_input.setAlignment(QtCore.Qt.AlignCenter)
+#         self.pass_input.setObjectName("pass_input")
+#         self.ok_button = QtWidgets.QPushButton(self.centralwidget)
+#         self.ok_button.setGeometry(QtCore.QRect(80, 80, 89, 31))
+#         self.ok_button.setObjectName("ok_button")
+#         self.cancel_button = QtWidgets.QPushButton(self.centralwidget)
+#         self.cancel_button.setGeometry(QtCore.QRect(240, 80, 89, 31))
+#         self.cancel_button.setObjectName("cancel_button")
+#         self.hide_unhide_button = QtWidgets.QPushButton(self.centralwidget)
+#         self.hide_unhide_button.setGeometry(QtCore.QRect(359, 40, 31, 25))
+#         self.hide_unhide_button.setText("")
+#         self.hide_unhide_button.setObjectName("hide_unhide_button")
+#
+#         # icon for button
+#         self.ok_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+#         self.cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+#         self.hide_unhide_button.setIcon(QtGui.QIcon('./icon/unhide.png'))
+#
+#         # event button
+#         self.hide_unhide_button.clicked.connect(self.hide_unhide_pass)
+#         # apply button
+#         self.ok_button.clicked.connect(self.newWindow)
+#
+#
+#         Password.setCentralWidget(self.centralwidget)
+#         self.statusbar = QtWidgets.QStatusBar(Password)
+#         self.statusbar.setObjectName("statusbar")
+#         Password.setStatusBar(self.statusbar)
+#         self.retranslateUi(Password)
+#         QtCore.QMetaObject.connectSlotsByName(Password)
+#
+#     def hide_unhide_pass(self):
+#         global hide_trigger
+#         hide_trigger = not hide_trigger
+#         if hide_trigger:
+#             self.pass_input.setEchoMode(QtWidgets.QLineEdit.Normal)
+#         else:
+#             self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+#
+#     def newWindow(self):
+#         self.mainwindow2 = MainWindow2()
+#         # self.mainwindow2.closed.connect(self.show)
+#         self.mainwindow2.show()
+#         # self.hide()
+#
+#     def retranslateUi(self, Password):
+#         _translate = QtCore.QCoreApplication.translate
+#         Password.setWindowTitle(_translate("Password", "Password Window"))
+#         self.label.setText(_translate("Password", "Vui lòng nhập Password !"))
+#
+#
+# class MainWindow(QtWidgets.QMainWindow, Ui_Password):
+#     def __init__(self):
+#         global w_height, w_width
+#         super().__init__()
+#         self.setupUi(self)
+#         self.setFixedSize(w_width, w_height)
+#
+#     def closeEvent(self, event):
+#         super().closeEvent(event)
+#
+#
+# class Ui_Password2(object):
+#     def setupUi(self, Password2):
+#
+#         # self.input_pass = input_pass
+#
+#         Password2.setObjectName("Password")
+#         Password2.resize(400, 139)
+#         self.centralwidget = QtWidgets.QWidget(Password2)
+#         self.centralwidget.setObjectName("centralwidget")
+#         self.label = QtWidgets.QLabel(self.centralwidget)
+#         self.label.setGeometry(QtCore.QRect(0, 10, 391, 20))
+#         self.label.setAlignment(QtCore.Qt.AlignCenter)
+#         self.label.setObjectName("label")
+#         self.pass_input = QtWidgets.QLineEdit(self.centralwidget)
+#         self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+#         self.pass_input.setGeometry(QtCore.QRect(10, 40, 381, 25))
+#         self.pass_input.setAlignment(QtCore.Qt.AlignCenter)
+#         self.pass_input.setObjectName("pass_input")
+#         self.ok_button = QtWidgets.QPushButton(self.centralwidget)
+#         self.ok_button.setGeometry(QtCore.QRect(80, 80, 89, 31))
+#         self.ok_button.setObjectName("ok_button")
+#         self.cancel_button = QtWidgets.QPushButton(self.centralwidget)
+#         self.cancel_button.setGeometry(QtCore.QRect(240, 80, 89, 31))
+#         self.cancel_button.setObjectName("cancel_button")
+#         self.hide_unhide_button = QtWidgets.QPushButton(self.centralwidget)
+#         self.hide_unhide_button.setGeometry(QtCore.QRect(359, 40, 31, 25))
+#         self.hide_unhide_button.setText("")
+#         self.hide_unhide_button.setObjectName("hide_unhide_button")
+#
+#         # icon for button
+#         self.ok_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+#         self.cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+#         self.hide_unhide_button.setIcon(QtGui.QIcon('./icon/unhide.png'))
+#
+#         # event button
+#         self.hide_unhide_button.clicked.connect(self.hide_unhide_pass)
+#
+#
+#         Password2.setCentralWidget(self.centralwidget)
+#         self.statusbar = QtWidgets.QStatusBar(Password2)
+#         self.statusbar.setObjectName("statusbar")
+#         Password2.setStatusBar(self.statusbar)
+#         self.retranslateUi(Password2)
+#         QtCore.QMetaObject.connectSlotsByName(Password2)
+#
+#     def hide_unhide_pass(self):
+#         global hide_trigger
+#         hide_trigger = not hide_trigger
+#         if hide_trigger:
+#             self.pass_input.setEchoMode(QtWidgets.QLineEdit.Normal)
+#         else:
+#             self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+#
+#     def retranslateUi(self, Password):
+#         _translate = QtCore.QCoreApplication.translate
+#         Password.setWindowTitle(_translate("Password", "Password Window"))
+#         self.label.setText(_translate("Password", "Vui lòng nhập Password lần 2 !"))
+#
+#
+# class MainWindow2(QtWidgets.QMainWindow, Ui_Password2):
+#
+#     # QMainWindow doesn't have a closed signal, so we'll make one.
+#     closed = QtCore.pyqtSignal()
+#
+#     def __init__(self):
+#         global w_height, w_width
+#         super().__init__()
+#         self.setupUi(self)
+#         self.setFixedSize(w_width, w_height)
+#
+#     def closeEvent(self, event):
+#         super().closeEvent(event)
+#
+#
+# if __name__ == '__main__':
+#     import sys
+#
+#     app = QtWidgets.QApplication(sys.argv)
+#     QtCore.QCoreApplication.setOrganizationName("Eyllanesc")
+#     QtCore.QCoreApplication.setOrganizationDomain("eyllanesc.com")
+#     QtCore.QCoreApplication.setApplicationName("MyApp")
+#     w = MainWindow()
+#     w.show()
+#     app.exec_()
+
+
+# # send request to Re-ID API to get body vectors
+# api_path = f"http://{os.getenv('MODEL_REID_HOST')}:{os.getenv('MODEL_REID_PORT')}/v2/predict/person_embedding_batch"
+# if len(files) > 0:
+#     response = requests.request("POST", api_path, files=files)
+#     data = response.json()["data"]
+
+import requests

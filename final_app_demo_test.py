@@ -9,6 +9,7 @@ import queue
 import json
 import yaml
 import datetime
+import requests
 
 import face_mask_threading
 from mask_utils import global_variable_define as gd
@@ -33,6 +34,7 @@ light_alarm = 0
 sound_alarm = 0
 both_alarm = 1
 trigger_stop = 0
+trigger_pause = 0
 
 draw_region_points = []
 draw_counting_points = []
@@ -48,6 +50,19 @@ draw_count_flag_old = False
 
 set_working_time_flag = False
 
+setting_object_id = None
+
+lock_trigger = False
+
+hide_1_trigger = False
+hide_2_trigger = False
+hide_3_trigger = False
+
+# for password application
+hide_trigger = False
+pass_width = 400
+pass_height = 150
+
 extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
 
@@ -58,13 +73,20 @@ from_time_minute = None
 # to
 to_time_hour = None
 to_time_minute = None
-new_camera_id = ""
-new_camera_path = ""
 
 # config_file
 # ----- KEY
-config_file = "./configs/test_final.yml"
+config_file = "./configs/cameras_config.yml"
+password_file = "./configs/password.json"
+token = "d41d8cd98f00b204e9800998ecf8427e"
 # ----- KEY
+
+# get password
+with open(password_file) as json_file:
+    pass_data = json.load(json_file)
+json_file.close()
+password = pass_data["password"]
+
 
 def read_config_file():
     global config_file
@@ -100,206 +122,14 @@ def create_default_counting_line(w_in, h_in, extra_pixels_in):
     return result
 
 
-class Thread(QtCore.QThread):
-    changePixmap = QtCore.pyqtSignal(QtGui.QImage)
-
-    def __init__(self, parent, g_tong_khong_kt):
-        QtCore.QThread.__init__(self, parent)
-        self._go = None
-        self.g_tong_khong_kt = g_tong_khong_kt
-        # self.radioButton_light_option = radioButton_light_option
-
-    def run(self):
-        global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
-            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute
-
-        # # connect to sql database
-        conn_display = sqlite3.connect('./database/final_data_base.db')
-        c_display = conn_display.cursor()
-
-        # run mode variable
-        self._go = True
-
-        # get information from config_file
-        yaml.warnings({'YAMLLoadWarning': False})
-        with open(config_file, 'r') as fs:
-            config = yaml.load(fs)
-            # config = yaml.load(fs, Loader=yaml.FullLoader)
-
-        cam_config = config["input"]["cam_config"]
-
-        with open(cam_config) as json_file:
-            json_data = json.load(json_file)
-        json_file.close()
-
-        cam_infor_list = json_data["data"]
-        insert_name = json_data["data"][0]["name"]
-
-        input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
-        tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
-
-        num_cam = len(input_video_list)
-        video_infor_list = []
-        max_fps = 0
-        for cam_index in range(num_cam):
-            width1, height1, fps_video1 = face_mask_threading.get_info_video(input_video_list[cam_index])
-            video_infor_list.append([width1, height1, fps_video1])
-            if max_fps < fps_video1:
-                max_fps = fps_video1
-
-        no_job_sleep_time = (1 / max_fps) / 10
-
-        # create face_mask buffer, forward_message and backward_message
-        face_mask_buffer = [queue.Queue(100) for i in range(num_cam)]
-
-        forward_message = queue.Queue()
-        backward_message = queue.Queue()
-
-        gd.set_backward_message(backward_message)
-
-        wait_stop = threading.Barrier(5)
-
-        # call face mask threading
-        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
-                                                   wait_stop, no_job_sleep_time)
-
-        # event count to update no face mask person and active alarm mode
-        event_count = 0
-
-        while self._go:
-            if os.path.exists(config_file):
-                if trigger_stop == 1:
-                    forward_message.put("stop")
-                    trigger_stop = 0
-                    time.sleep(1)
-                    self.stop_thread()
-
-                # self.radioButton_light_option.setChecked(True)
-
-                # get information form the queue
-                for cam_index in range(num_cam):
-                    face_mask_output_data = face_mask_buffer[cam_index]
-                    if not face_mask_output_data.empty():
-                        data = face_mask_output_data.get()
-
-                        ind = data[0]
-                        frame_ori = data[1]
-                        list_count = data[2]
-
-                        if ind != -1:
-                            # get number of no face mask person
-                            event_count = list_count[0]["Person"]
-
-                            # event
-                            if count < event_count:
-                                count = event_count
-
-                                # update display_no_face_mask_counting
-                                self.g_tong_khong_kt.display(count)
-
-                                # insert data into database when detect new no-face-mask person
-                                # AND also check check setting time status
-                                if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
-                                    # check setting time (FROM)
-                                    information1_time = datetime.datetime.now()
-                                    print("Time1:", information1_time)
-                                    if (int(information1_time.hour) >= int(from_time_hour)) \
-                                            and (int(information1_time.minute) >= int(from_time_minute)):
-                                        data = datetime.datetime.now()
-                                        data_form = {"Camera_name": insert_name,
-                                                     "Minute": data.minute,
-                                                     "Hour": data.hour,
-                                                     "Day": data.day,
-                                                     "Month": data.month,
-                                                     "Year": data.year}
-                                        data_form_add = pd.DataFrame.from_dict([data_form])
-                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                                        print("[INFO]-- Inserted data into Database")
-                                        conn_display.commit()
-                                else:
-                                    data = datetime.datetime.now()
-                                    data_form = {"Camera_name": insert_name,
-                                                 "Minute": data.minute,
-                                                 "Hour": data.hour,
-                                                 "Day": data.day,
-                                                 "Month": data.month,
-                                                 "Year": data.year}
-                                    data_form_add = pd.DataFrame.from_dict([data_form])
-                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                                    print("[INFO]-- Inserted data into Database")
-                                    conn_display.commit()
-
-                                # active alarm
-                                if sound_alarm == 1:
-                                    print("[INFO]-- Sound")
-                                    sound_file = "./sound_alarm/police.mp3"
-                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                                elif light_alarm == 1:
-                                    print("[INFO]-- Light")
-                                else:
-                                    print("[INFO]-- Sound and light")
-                                    sound_file = "./sound_alarm/police.mp3"
-                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
-
-                            # display on APP
-                            result_frame = cv2.resize(frame_ori, (width, height))
-                            rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
-                            h_result_frame, w_result_frame, ch = rgbImage.shape
-                            bytesPerLine = ch * w_result_frame
-                            convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
-                                                             bytesPerLine, QtGui.QImage.Format_RGB888)
-                            p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
-                            self.changePixmap.emit(p)
-
-                    else:
-                        time.sleep(no_job_sleep_time)
-
-                # check setting time (TO) for STOP
-                information2_time = datetime.datetime.now()
-                # print("Time2:", information2_time)
-                if set_working_time_flag and to_time_hour is not None and to_time_minute is not None:
-                    if (int(information2_time.hour) >= int(to_time_hour)) \
-                            and (int(information2_time.minute) >= int(to_time_minute)):
-                        print("[INFO] All threads are stopped because of out of time (Setting time)")
-                        forward_message.put("stop")
-                        trigger_stop = 0
-                        time.sleep(1)
-                        self.stop_thread()
-
-            else:
-                app_warning_function.check_config_file()
-                time.sleep(0.5)
-
-    def stop_thread(self):
-        global draw_region_flag, \
-            draw_count_flag, \
-            draw_counting_points, \
-            draw_region_points, \
-            draw_counting_no_scale, \
-            draw_region_points_no_scale, \
-            set_working_time_flag, \
-            from_time_hour, \
-            from_time_minute, \
-            to_time_hour, \
-            to_time_minute
-
-        self._go = False
-        draw_region_flag = False
-        draw_count_flag = False
-        draw_counting_points = []
-        draw_region_points = []
-        draw_region_points_no_scale = []
-        draw_counting_no_scale = []
-        set_working_time_flag = True
-        from_time_hour = None
-        from_time_minute = None
-        to_time_hour = None
-        to_time_minute = None
-
-
 def close_window():
     global trigger_stop
     trigger_stop = 1
+
+
+def pause_unpause():
+    global trigger_pause
+    trigger_pause = 1
 
 
 def shape_selection_for_region(event, x, y, flags, param):
@@ -436,6 +266,225 @@ def save(settings):
             settings.endGroup()
 
 
+class Thread(QtCore.QThread):
+    changePixmap = QtCore.pyqtSignal(QtGui.QImage)
+
+    def __init__(self, parent, g_tong_vao, g_tong_kt, g_tong_khong_kt, g_ket_qua_chi_tiet_table, g_tt_hoat_dong_table):
+
+        QtCore.QThread.__init__(self, parent)
+        self._go = None
+        # need to be update from MainWindow
+        self.g_tong_vao = g_tong_vao
+        self.g_tong_kt = g_tong_kt
+        self.g_tong_khong_kt = g_tong_khong_kt
+        self.g_ket_qua_chi_tiet_table = g_ket_qua_chi_tiet_table
+        self.g_tt_hoat_dong_table = g_tt_hoat_dong_table
+
+    def run(self):
+        global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
+            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute, trigger_pause
+
+        # # connect to sql database
+        conn_display = sqlite3.connect('./database/final_data_base.db')
+        c_display = conn_display.cursor()
+
+        # run mode variable
+        self._go = True
+
+        # get information from config_file
+        json_data = read_config_file()
+        cam_infor_list = json_data["data"]
+
+        insert_name = json_data["data"][0]["name"]
+
+        # parse all information of each camera
+        input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
+        tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
+
+        num_cam = len(input_video_list)
+        video_infor_list = []
+        max_fps = 0
+        for cam_index in range(num_cam):
+            width1, height1, fps_video1 = face_mask_threading.get_info_video(input_video_list[cam_index])
+            video_infor_list.append([width1, height1, fps_video1])
+            if max_fps < fps_video1:
+                max_fps = fps_video1
+
+        no_job_sleep_time = (1 / max_fps) / 10
+
+        # create face_mask buffer, forward_message and backward_message
+        face_mask_buffer = [queue.Queue(50) for i in range(num_cam)]
+
+        forward_message = queue.Queue()
+        backward_message = queue.Queue()
+
+        gd.set_backward_message(backward_message)
+
+        wait_stop = threading.Barrier(5)
+
+        # call face mask threading
+        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
+                                                   wait_stop, no_job_sleep_time)
+
+        # # event count to update no face mask person and active alarm mode
+        # event_count = 0
+
+        # prepare data for updating and alarm
+        data_item = {
+            "camera_name": None,
+            "person": 0,
+            "no_mask": 0,
+            "mask": 0,
+            "status": "stopped",
+            "setting_time": None
+        }
+
+        # create core_data with the same lenght as num_cam
+        core_data = [data_item.copy() for i in range(num_cam)]
+
+        # add corresponding name of camera into core_data
+        for cam_index in range(num_cam):
+            if cam_infor_list[cam_index]["enable"] == "yes":
+                core_data[cam_index]["camera_name"] = cam_infor_list[cam_index]["name"]
+                core_data[cam_index]["setting_time"] = cam_infor_list[cam_index]["setting_time"]
+
+        while self._go:
+            if os.path.exists(config_file):
+                if trigger_stop == 1:
+                    forward_message.put("stop")
+                    trigger_stop = 0
+                    time.sleep(1)
+                    self.stop_thread()
+
+                if trigger_pause == 1:
+                    forward_message.put("pause/unpause")
+                    trigger_pause = 0
+                    time.sleep(1)
+
+                # self.radioButton_light_option.setChecked(True)
+
+                # get information form the queue
+                for cam_index in range(num_cam):
+                    face_mask_output_data = face_mask_buffer[cam_index]
+                    if not face_mask_output_data.empty():
+                        data = face_mask_output_data.get()
+
+                        ind = data[0]
+                        frame_ori = data[1]
+                        list_count = data[2]
+
+                        if ind != -1:
+                            # get number of no face mask person
+                            event_count = list_count[0]["Person"]
+
+                            # event
+                            if count < event_count:
+                                count = event_count
+
+                                # update display_no_face_mask_counting
+                                self.g_tong_khong_kt.display(count)
+
+                                # insert data into database when detect new no-face-mask person
+                                # AND also check check setting time status
+                                if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
+                                    # check setting time (FROM)
+                                    information1_time = datetime.datetime.now()
+                                    print("Time1:", information1_time)
+                                    if (int(information1_time.hour) >= int(from_time_hour)) \
+                                            and (int(information1_time.minute) >= int(from_time_minute)):
+                                        data = datetime.datetime.now()
+                                        data_form = {"Camera_name": insert_name,
+                                                     "Minute": data.minute,
+                                                     "Hour": data.hour,
+                                                     "Day": data.day,
+                                                     "Month": data.month,
+                                                     "Year": data.year}
+                                        data_form_add = pd.DataFrame.from_dict([data_form])
+                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                        print("[INFO]-- Inserted data into Database")
+                                        conn_display.commit()
+                                else:
+                                    data = datetime.datetime.now()
+                                    data_form = {"Camera_name": insert_name,
+                                                 "Minute": data.minute,
+                                                 "Hour": data.hour,
+                                                 "Day": data.day,
+                                                 "Month": data.month,
+                                                 "Year": data.year}
+                                    data_form_add = pd.DataFrame.from_dict([data_form])
+                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+                                    print("[INFO]-- Inserted data into Database")
+                                    conn_display.commit()
+
+                                # active alarm
+                                if sound_alarm == 1:
+                                    print("[INFO]-- Sound")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                elif light_alarm == 1:
+                                    print("[INFO]-- Light")
+                                else:
+                                    print("[INFO]-- Sound and light")
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+
+                            # display on APP
+                            result_frame = cv2.resize(frame_ori, (width, height))
+                            rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+                            h_result_frame, w_result_frame, ch = rgbImage.shape
+                            bytesPerLine = ch * w_result_frame
+                            convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
+                                                             bytesPerLine, QtGui.QImage.Format_RGB888)
+                            p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
+                            self.changePixmap.emit(p)
+
+                    else:
+                        time.sleep(no_job_sleep_time)
+
+                # check setting time (TO) for STOP
+                information2_time = datetime.datetime.now()
+                # print("Time2:", information2_time)
+                if set_working_time_flag and to_time_hour is not None and to_time_minute is not None:
+                    if (int(information2_time.hour) >= int(to_time_hour)) \
+                            and (int(information2_time.minute) >= int(to_time_minute)):
+                        print("[INFO] All threads are stopped because of out of time (Setting time)")
+                        forward_message.put("stop")
+                        trigger_stop = 0
+                        time.sleep(1)
+                        self.stop_thread()
+
+            else:
+                app_warning_function.check_config_file()
+                time.sleep(0.5)
+
+    def stop_thread(self):
+        global draw_region_flag, \
+            draw_count_flag, \
+            draw_counting_points, \
+            draw_region_points, \
+            draw_counting_no_scale, \
+            draw_region_points_no_scale, \
+            set_working_time_flag, \
+            from_time_hour, \
+            from_time_minute, \
+            to_time_hour, \
+            to_time_minute
+
+        self._go = False
+        draw_region_flag = False
+        draw_count_flag = False
+        draw_counting_points = []
+        draw_region_points = []
+        draw_region_points_no_scale = []
+        draw_counting_no_scale = []
+        set_working_time_flag = True
+        from_time_hour = None
+        from_time_minute = None
+        to_time_hour = None
+        to_time_minute = None
+
+
+# ------------------------------------------------------  MAIN APPLICATION
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -480,7 +529,7 @@ class Ui_MainWindow(object):
         self.label_115.setText("")
         self.label_115.setObjectName("label_115")
         self.label_119 = QtWidgets.QLabel(self.groupBox_3)
-        self.label_119.setGeometry(QtCore.QRect(10, 320, 71, 17))
+        self.label_119.setGeometry(QtCore.QRect(10, 320, 81, 17))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -568,7 +617,7 @@ class Ui_MainWindow(object):
         self.tab_7 = QtWidgets.QWidget()
         self.tab_7.setObjectName("tab_7")
         self.t_server_apply_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_apply_button.setGeometry(QtCore.QRect(230, 190, 51, 31))
+        self.t_server_apply_button.setGeometry(QtCore.QRect(250, 190, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -582,10 +631,10 @@ class Ui_MainWindow(object):
         self.t_server_cap_phep.setText("")
         self.t_server_cap_phep.setObjectName("t_server_cap_phep")
         self.label_84 = QtWidgets.QLabel(self.tab_7)
-        self.label_84.setGeometry(QtCore.QRect(10, 50, 71, 17))
+        self.label_84.setGeometry(QtCore.QRect(10, 50, 81, 17))
         self.label_84.setObjectName("label_84")
         self.t_server_cancel_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_cancel_button.setGeometry(QtCore.QRect(390, 190, 51, 31))
+        self.t_server_cancel_button.setGeometry(QtCore.QRect(330, 190, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -607,7 +656,7 @@ class Ui_MainWindow(object):
         self.t_server_ten_thiet_bi.setGeometry(QtCore.QRect(170, 10, 371, 21))
         self.t_server_ten_thiet_bi.setObjectName("t_server_ten_thiet_bi")
         self.t_server_sending_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_sending_button.setGeometry(QtCore.QRect(150, 190, 51, 31))
+        self.t_server_sending_button.setGeometry(QtCore.QRect(170, 190, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -619,16 +668,6 @@ class Ui_MainWindow(object):
         self.label_120 = QtWidgets.QLabel(self.tab_7)
         self.label_120.setGeometry(QtCore.QRect(10, 130, 151, 17))
         self.label_120.setObjectName("label_120")
-        self.t_server_confirm_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_confirm_button.setGeometry(QtCore.QRect(310, 190, 51, 31))
-        font = QtGui.QFont()
-        font.setFamily("Ubuntu")
-        font.setPointSize(10)
-        font.setBold(True)
-        font.setWeight(75)
-        self.t_server_confirm_button.setFont(font)
-        self.t_server_confirm_button.setText("")
-        self.t_server_confirm_button.setObjectName("t_server_confirm_button")
         self.t_server_key = QtWidgets.QLabel(self.tab_7)
         self.t_server_key.setGeometry(QtCore.QRect(170, 130, 371, 21))
         self.t_server_key.setFrameShape(QtWidgets.QFrame.Box)
@@ -638,7 +677,7 @@ class Ui_MainWindow(object):
         self.tab_8 = QtWidgets.QWidget()
         self.tab_8.setObjectName("tab_8")
         self.t_pass_change_pass_button = QtWidgets.QPushButton(self.tab_8)
-        self.t_pass_change_pass_button.setGeometry(QtCore.QRect(260, 140, 51, 31))
+        self.t_pass_change_pass_button.setGeometry(QtCore.QRect(210, 150, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -648,6 +687,7 @@ class Ui_MainWindow(object):
         self.t_pass_change_pass_button.setText("")
         self.t_pass_change_pass_button.setObjectName("t_pass_change_pass_button")
         self.t_pass_moi = QtWidgets.QLineEdit(self.tab_8)
+        self.t_pass_moi.setEchoMode(QtWidgets.QLineEdit.Password)
         self.t_pass_moi.setGeometry(QtCore.QRect(180, 50, 361, 21))
         self.t_pass_moi.setText("")
         self.t_pass_moi.setObjectName("t_pass_moi")
@@ -658,7 +698,7 @@ class Ui_MainWindow(object):
         self.label_86.setGeometry(QtCore.QRect(10, 50, 101, 17))
         self.label_86.setObjectName("label_86")
         self.t_pass_cancel_button = QtWidgets.QPushButton(self.tab_8)
-        self.t_pass_cancel_button.setGeometry(QtCore.QRect(340, 140, 51, 31))
+        self.t_pass_cancel_button.setGeometry(QtCore.QRect(290, 150, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -671,21 +711,27 @@ class Ui_MainWindow(object):
         self.label_87.setGeometry(QtCore.QRect(10, 10, 121, 17))
         self.label_87.setObjectName("label_87")
         self.t_pass_xac_nhan_moi = QtWidgets.QLineEdit(self.tab_8)
+        self.t_pass_xac_nhan_moi.setEchoMode(QtWidgets.QLineEdit.Password)
         self.t_pass_xac_nhan_moi.setGeometry(QtCore.QRect(180, 90, 361, 21))
         self.t_pass_xac_nhan_moi.setObjectName("t_pass_xac_nhan_moi")
         self.t_pass_cu = QtWidgets.QLineEdit(self.tab_8)
+        self.t_pass_cu.setEchoMode(QtWidgets.QLineEdit.Password)
         self.t_pass_cu.setGeometry(QtCore.QRect(180, 10, 361, 21))
         self.t_pass_cu.setObjectName("t_pass_cu")
-        self.t_pass_apply_button = QtWidgets.QPushButton(self.tab_8)
-        self.t_pass_apply_button.setGeometry(QtCore.QRect(180, 140, 51, 31))
-        font = QtGui.QFont()
-        font.setFamily("Ubuntu")
-        font.setPointSize(10)
-        font.setBold(True)
-        font.setWeight(75)
-        self.t_pass_apply_button.setFont(font)
-        self.t_pass_apply_button.setText("")
-        self.t_pass_apply_button.setObjectName("t_pass_apply_button")
+
+        self.t_pass_hide_1 = QtWidgets.QPushButton(self.tab_8)
+        self.t_pass_hide_1.setGeometry(QtCore.QRect(510, 10, 31, 21))
+        self.t_pass_hide_1.setText("")
+        self.t_pass_hide_1.setObjectName("t_pass_hide_1")
+        self.t_pass_hide_2 = QtWidgets.QPushButton(self.tab_8)
+        self.t_pass_hide_2.setGeometry(QtCore.QRect(510, 50, 31, 21))
+        self.t_pass_hide_2.setText("")
+        self.t_pass_hide_2.setObjectName("t_pass_hide_2")
+        self.t_pass_hide_3 = QtWidgets.QPushButton(self.tab_8)
+        self.t_pass_hide_3.setGeometry(QtCore.QRect(510, 90, 31, 21))
+        self.t_pass_hide_3.setText("")
+        self.t_pass_hide_3.setObjectName("t_pass_hide_3")
+
         self.tabWidget_2.addTab(self.tab_8, "")
         self.report_tab.addTab(self.tab_2, "")
         self.tab = QtWidgets.QWidget()
@@ -717,7 +763,7 @@ class Ui_MainWindow(object):
         self.g_tt_hoat_dong_table.setItem(1, 0, item)
         item = QtWidgets.QTableWidgetItem()
         self.g_tt_hoat_dong_table.setItem(1, 1, item)
-        self.g_tt_hoat_dong_table.horizontalHeader().setDefaultSectionSize(123)
+        self.g_tt_hoat_dong_table.horizontalHeader().setDefaultSectionSize(132)
         self.g_tt_hoat_dong_table.horizontalHeader().setMinimumSectionSize(58)
         self.g_tt_hoat_dong_table.verticalHeader().setDefaultSectionSize(21)
         self.g_start_button = QtWidgets.QPushButton(self.groupBox_5)
@@ -775,7 +821,7 @@ class Ui_MainWindow(object):
         self.g_ket_qua_chi_tiet_table.setHorizontalHeaderItem(2, item)
         item = QtWidgets.QTableWidgetItem()
         self.g_ket_qua_chi_tiet_table.setHorizontalHeaderItem(3, item)
-        self.g_ket_qua_chi_tiet_table.horizontalHeader().setDefaultSectionSize(123)
+        self.g_ket_qua_chi_tiet_table.horizontalHeader().setDefaultSectionSize(128)
         self.g_ket_qua_chi_tiet_table.verticalHeader().setDefaultSectionSize(21)
         self.groupBox_4 = QtWidgets.QGroupBox(self.tab)
         self.groupBox_4.setGeometry(QtCore.QRect(280, 0, 791, 461))
@@ -1537,9 +1583,9 @@ class Ui_MainWindow(object):
         self.q_chinh_combobox_am_thanh = QtWidgets.QComboBox(self.tab_6)
         self.q_chinh_combobox_am_thanh.setGeometry(QtCore.QRect(240, 330, 111, 21))
         self.q_chinh_combobox_am_thanh.setObjectName("q_chinh_combobox_am_thanh")
-        self.q_chinh_combobox_am_thanh.addItem("")
-        self.q_chinh_combobox_am_thanh.addItem("")
-        self.q_chinh_combobox_am_thanh.addItem("")
+        self.q_chinh_combobox_am_thanh.addItem("coi canh sat")
+        self.q_chinh_combobox_am_thanh.addItem("tieng pip")
+        self.q_chinh_combobox_am_thanh.addItem("am canh bao")
         self.label_103 = QtWidgets.QLabel(self.tab_6)
         self.label_103.setGeometry(QtCore.QRect(10, 94, 121, 17))
         self.label_103.setObjectName("label_103")
@@ -1578,9 +1624,9 @@ class Ui_MainWindow(object):
         self.q_chinh_combobox_den = QtWidgets.QComboBox(self.tab_6)
         self.q_chinh_combobox_den.setGeometry(QtCore.QRect(240, 290, 111, 21))
         self.q_chinh_combobox_den.setObjectName("q_chinh_combobox_den")
-        self.q_chinh_combobox_den.addItem("")
-        self.q_chinh_combobox_den.addItem("")
-        self.q_chinh_combobox_den.addItem("")
+        self.q_chinh_combobox_den.addItem("nhap nhay")
+        self.q_chinh_combobox_den.addItem("mac dinh")
+        self.q_chinh_combobox_den.addItem("nhay nhanh")
         self.q_chinh_time_tu = QtWidgets.QTimeEdit(self.tab_6)
         self.q_chinh_time_tu.setGeometry(QtCore.QRect(150, 410, 61, 20))
         self.q_chinh_time_tu.setObjectName("q_chinh_time_tu")
@@ -1806,13 +1852,13 @@ class Ui_MainWindow(object):
         # quan li camera
         self.q_moi_vung_quan_sat_button.setIcon(QtGui.QIcon('./icon/draw.png'))
         self.q_moi_vach_kiem_dem_button.setIcon(QtGui.QIcon('./icon/draw.png'))
-        self.q_moi_appy_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+        self.q_moi_appy_button.setIcon(QtGui.QIcon('./icon/sending.png'))
         self.q_moi_add_button.setIcon(QtGui.QIcon('./icon/add.jpg'))
         self.q_moi_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
         self.q_chinh_search_button.setIcon(QtGui.QIcon('./icon/search.png'))
         self.q_chinh_vung_quan_sat.setIcon(QtGui.QIcon('./icon/draw.png'))
         self.q_chinh_vach_kiem_dem.setIcon(QtGui.QIcon('./icon/draw.png'))
-        self.q_chinh_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+        self.q_chinh_apply_button.setIcon(QtGui.QIcon('./icon/sending.png'))
         self.q_chinh_chinh_sua_button.setIcon(QtGui.QIcon('./icon/edit.png'))
         self.q_chinh_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
         self.q_chinh_delete_button.setIcon(QtGui.QIcon('./icon/delete.png'))
@@ -1826,22 +1872,33 @@ class Ui_MainWindow(object):
         # thong tin va thiet dat
         self.t_server_sending_button.setIcon(QtGui.QIcon('./icon/sending.png'))
         self.t_server_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
-        self.t_server_confirm_button.setIcon(QtGui.QIcon('./icon/update.png'))
         self.t_server_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
-        self.t_pass_apply_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
         self.t_pass_change_pass_button.setIcon(QtGui.QIcon('./icon/confirm.png'))
         self.t_pass_cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+        self.t_pass_hide_1.setIcon(QtGui.QIcon('./icon/unhide.png'))
+        self.t_pass_hide_2.setIcon(QtGui.QIcon('./icon/unhide.png'))
+        self.t_pass_hide_3.setIcon(QtGui.QIcon('./icon/unhide.png'))
         # -----
 
         # -----
         # EVENTS
+
+        # FOR MAIN VIEW TAB
         # start video
         self.g_start_button.clicked.connect(self.video)
         # stop video
         self.g_stop_button.clicked.connect(close_window)
+        # pause/unpause
+        self.g_pause_play_button.clicked.connect(pause_unpause)
         # call display video
         global th
-        th = Thread(MainWindow, self.g_tong_khong_kt)
+        th = Thread(MainWindow, self.g_tong_vao, self.g_tong_kt, self.g_tong_khong_kt, self.g_ket_qua_chi_tiet_table,
+                    self.g_tt_hoat_dong_table)
+        # update camera working status
+        self.camera_working_status()
+        # update detail counting result
+        self.detail_counting_results()
+
         # FOR REPORT AND STATISTICS TAB
         # plotting
         self.b_t1_combobox_kieu_thong_ke.activated.connect(self.change_plot_date_format_1)
@@ -1849,17 +1906,19 @@ class Ui_MainWindow(object):
         self.update_combobox()  # for update all camera names in configuration file
         self.b_t1_plot_button.clicked.connect(self.call_plotting_1)
         self.b_t2_plot_button.clicked.connect(self.call_plotting_2)
+        # save and export
         self.b_t1_save_button.clicked.connect(self.call_save_1)
         self.b_t2_save_button.clicked.connect(self.call_save_2)
         self.b_t1_export_button.clicked.connect(self.call_export_1)
         self.b_t2_export_button.clicked.connect(self.call_export_2)
+
         # FOR CAMERAS MANAGEMENT TAB
         # update camera information in camera management tab
-        self.camera_management_working_status()
+        self.camera_management()
         # assign new camera id
         self.q_moi_appy_button.clicked.connect(self.camera_management_assign_camera_id)
         # add new camera
-        self.q_moi_add_button.clicked.connect(self.camera_management_add_new)
+        self.q_moi_add_button.clicked.connect(self.camera_management_add_camera_infor_new)
         # draw new tracking region
         self.q_moi_vung_quan_sat_button.clicked.connect(self.camera_management_draw_region_new)
         # draw new counting line
@@ -1872,8 +1931,21 @@ class Ui_MainWindow(object):
         self.q_chinh_delete_button.clicked.connect(self.camera_management_delete_camera)
         # edit camera infor
         self.q_chinh_chinh_sua_button.clicked.connect(self.camera_management_edit_camera_infor)
-        # test
-        self.q_chinh_combobox_am_thanh.setCurrentText("tieng pip")
+        # edit tracking region
+        self.q_chinh_vung_quan_sat.clicked.connect(self.camera_management_draw_region_edit)
+        # edit counting line
+        self.q_chinh_vach_kiem_dem.clicked.connect(self.camera_management_draw_counting_edit)
+
+        # FOR INFORMATION AND SETTING TAB
+        # password change
+        self.t_pass_change_pass_button.clicked.connect(self.password_changing)
+        # unhide and hide in password tab
+        self.t_pass_hide_1.clicked.connect(self.hide_1)
+        self.t_pass_hide_2.clicked.connect(self.hide_2)
+        self.t_pass_hide_3.clicked.connect(self.hide_3)
+        # for object_id register
+        self.t_server_sending_button.clicked.connect(self.setting_register_object_id)
+        self.t_server_apply_button.clicked.connect(self.setting_check_object_id)
         # -----
 
         MainWindow.setCentralWidget(self.centralwidget)
@@ -1898,6 +1970,10 @@ class Ui_MainWindow(object):
         font.setPointSize(10)
         self.exit.setFont(font)
         self.exit.setObjectName("exit")
+
+        # check lock action
+        self.actionLock.triggered.connect(self.password_application)
+
         self.menuHome.addAction(self.actionLock)
         self.menuHome.addAction(self.exit)
         self.menubar.addAction(self.menuHome.menuAction())
@@ -2062,169 +2138,243 @@ class Ui_MainWindow(object):
                                                export)
 
     # FOR CAMERAS MANAGEMENT TAB
-    def camera_management_working_status(self):
+    def camera_management(self):
         working_status_data = read_config_file()
-        working_status_data_parse = working_status_data["data"]
-        camera_infor = []
-        for i in range(len(working_status_data_parse)):
-            camera_infor_item = [
-                working_status_data_parse[i]["name"],
-                working_status_data_parse[i]["url"],
-                working_status_data_parse[i]["enable"],
-                working_status_data_parse[i]["setting_time"],
-                working_status_data_parse[i]["alarm_option"],
-                working_status_data_parse[i]["light"],
-                working_status_data_parse[i]["sound"]
-            ]
-            camera_infor.append(camera_infor_item)
-        column_count = len(camera_infor[0])
-        row_count = len(camera_infor)
-        for row in range(row_count):
-            for column in range(column_count):
-                item = str((list(camera_infor[row])[column]))
-                self.q_thong_tin_camera_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+        if len(str(working_status_data["object_id"])) > 0:
+            working_status_data_parse = working_status_data["data"]
+            if len(working_status_data_parse) > 0:
+                camera_infor = []
+                for i in range(len(working_status_data_parse)):
+                    camera_infor_item = [
+                        working_status_data_parse[i]["name"],
+                        working_status_data_parse[i]["url"],
+                        working_status_data_parse[i]["enable"],
+                        working_status_data_parse[i]["setting_time"],
+                        working_status_data_parse[i]["alarm_option"],
+                        working_status_data_parse[i]["light"],
+                        working_status_data_parse[i]["sound"]
+                    ]
+                    camera_infor.append(camera_infor_item)
+
+                # clear old data and insert new data
+                self.q_thong_tin_camera_table.setRowCount(0)
+                column_count = len(camera_infor[0])
+                row_count = len(camera_infor)
+                self.q_thong_tin_camera_table.setRowCount(row_count)
+                for row in range(row_count):
+                    for column in range(column_count):
+                        item = str((list(camera_infor[row])[column]))
+                        self.q_thong_tin_camera_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
     def camera_management_assign_camera_id(self):
-        global new_camera_id
-        # check camera name
-        if len(self.q_moi_ten_camera.text()) == 0:
-            app_warning_function.check_camera_name()
-        else:
-            new_camera_name = self.q_moi_ten_camera.text()
-            # call API and get result of camera id
-            new_camera_id = "xzy"
+        global config_file
+        assign_camera_id_data = read_config_file()
+        if len(str(assign_camera_id_data["object_id"])) > 0:
 
-    def camera_management_add_new(self):
-        global config_file, new_camera_id, new_camera_path, extra_pixels, draw_region_flag_new, draw_count_flag_new, \
-            draw_region_points, draw_counting_points
-
-        # check camera name
-        if len(self.q_moi_ten_camera.text()) == 0:
-            app_warning_function.check_camera_name()
-        else:
-            new_camera_name = self.q_moi_ten_camera.text()
-
-        # collect new camera address
-        new_camera_address = self.q_moi_dia_chi_camera.text()
-
-        # check status of new_camera_enable = "yes"
-        if self.q_moi_che_do.isChecked():
-            new_camera_enable = "yes"
-        else:
-            new_camera_enable = "no"
-
-        # check alarm_option
-        self.q_moi_am_thanh.setChecked(True)
-        if self.q_moi_den.isChecked():
-            new_camera_alarm_option = "den bao"
-        elif self.q_moi_am_thanh.isChecked():
-            new_camera_alarm_option = "am thanh"
-        elif self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
-            new_camera_alarm_option = "ca hai"
-
-
-        new_camera_sound_type = self.q_moi_combobox_am_thanh.currentText()
-        new_camera_light_type = self.q_moi_combobox_den.currentText()
-        new_camera_time_tu = self.q_moi_time_tu.text()
-        new_camera_time_den = self.q_moi_time_den.text()
-
-        # ----- get width, height of input
-        cap = cv2.VideoCapture(new_camera_address)
-        w = int(cap.get(3))
-        h = int(cap.get(4))
-        cap.release()
-        # -----
-
-        # check draw_region_flag_new to get for if drawn or not
-        new_camera_tracking_region = []
-        if draw_region_flag_new:
-            new_camera_tracking_region = draw_region_points
-            draw_region_flag_new = False
-            draw_region_points = []
-        else:
-            new_camera_tracking_region = create_default_region(w, h, extra_pixels)
-
-        # check draw_count_flag_new to get for if drawn or not
-        new_camera_counting_line = []
-        if draw_count_flag_new:
-            counting_point = draw_counting_points
-            if len(counting_point) % 6 == 0:
-                j = 0
-                for i in range(0, len(counting_point), 6):
-                    j += 1
-                    item = {
-                        "id": f"Counting-{j}",
-                        "points": [counting_point[i], counting_point[i + 1], counting_point[i + 2],
-                                   counting_point[i + 3]],
-                        "direction_point": [counting_point[i + 4], counting_point[i + 5]]
-                    }
-                    new_camera_counting_line.append(item)
-                draw_count_flag_new = False
-                draw_counting_points = []
+            # check camera name
+            if len(self.q_moi_ten_camera.text()) == 0:
+                app_warning_function.check_camera_name()
             else:
-                app_warning_function.check_new_counting_lines()
-                draw_count_flag_new = False
-                draw_counting_points = []
-        else:
-            new_camera_counting_line = create_default_counting_line(w, h, extra_pixels)
-
-        # check camera id to add new camera into config file
-        if len(new_camera_id) < 2:
-            app_warning_function.check_new_camera_id()
-        else:
-            new_camera_data = {
-                "id": new_camera_id,
-                "name": new_camera_name,
-                "enable": new_camera_enable,
-                "alarm_option": new_camera_alarm_option,
-                "sound": new_camera_sound_type,
-                "light": new_camera_light_type,
-                "setting_time": [new_camera_time_tu, new_camera_time_den],
-                "url": new_camera_address,
-                "frame_drop": 1,
-                "frame_step": 1,
-                "tracking_scale": 0.5,
-                "ROIs": [
-                    {
-                        "caption": "ROI-1",
-                        "box": [0, 0, 1920, 1080],
-                        "show_point": [50, 150]
+                assign_new_camera_name = self.q_moi_ten_camera.text()
+                # call API and get result of camera id
+                setting_server_url = "192.168.111.182:9000/api/cameras"
+                register_data_form = {
+                    "name": assign_new_camera_name,
+                    "object_appearance_id": assign_camera_id_data["object_id"],
+                }
+                # send request to API
+                api_path = f"http://{setting_server_url}"
+                headers = {"token": token}
+                response = requests.request("POST", api_path, json=register_data_form, headers=headers)
+                camera_id_data = response.json()
+                if camera_id_data["status"] == 200:
+                    self.q_moi_camera_id.setText(str(camera_id_data["data"]["id"]))
+                    new_camera_data = {
+                        "id": camera_id_data["data"]["id"],
+                        "name": assign_new_camera_name,
+                        "enable": "",
+                        "alarm_option": "",
+                        "sound": "",
+                        "light": "",
+                        "setting_time": [],
+                        "url": "",
+                        "frame_drop": 1,
+                        "frame_step": 1,
+                        "tracking_scale": 0.5,
+                        "ROIs": [
+                            {
+                                "caption": "ROI-1",
+                                "box": [0, 0, 1920, 1080],
+                                "show_point": [50, 150]
+                            }
+                        ],
+                        "tracking_regions": [
+                            {
+                                "id": "Tracking-1",
+                                "points": [],
+                                "id_show_point": [965, 644],
+                                "trap_lines": {
+                                    "unlimited_counts": []
+                                }
+                            }
+                        ]
                     }
-                ],
-                "tracking_regions": [
-                    {
-                        "id": "Tracking-1",
-                        "points": new_camera_tracking_region,
-                        "id_show_point": [965, 644],
-                        "trap_lines": {
-                            "unlimited_counts": new_camera_counting_line
+                    # add camera infor inton config file
+                    yaml.warnings({'YAMLLoadWarning': False})
+                    with open(config_file, 'r') as fs_new:
+                        config_new = yaml.load(fs_new)
+                    cam_config_new = config_new["input"]["cam_config"]
+                    with open(cam_config_new) as json_file_new:
+                        json_data_new = json.load(json_file_new)
+                    json_file_new.close()
+                    # add new camera information
+                    data_new = json_data_new["data"]
+                    data_new.append(new_camera_data)
+                    json_data_new["data"] = data_new
+                    # write json file
+                    with open(json_file_new.name, "w") as outfile_new:
+                        json.dump(json_data_new, outfile_new)
+                    outfile_new.close()
+
+                    # call for stop all threading and update combobox and camera working status
+                    close_window()
+                    self.update_combobox()
+                    self.camera_management()
+                    self.camera_working_status()
+                    self.detail_counting_results()
+                    app_warning_function.stop_all_thread()
+                else:
+                    app_warning_function.register_camera_id_falied()
+        else:
+            app_warning_function.non_object_id()
+
+    def camera_management_add_camera_infor_new(self):
+        global config_file, extra_pixels, draw_region_flag_new, draw_count_flag_new, draw_region_points, \
+            draw_counting_points
+
+        add_new_data = read_config_file()
+        if len(str(add_new_data["object_id"])) > 0:
+
+            # check camera name
+            if len(self.q_moi_ten_camera.text()) == 0:
+                app_warning_function.check_camera_name()
+            else:
+                new_camera_name = self.q_moi_ten_camera.text()
+
+            # collect new camera address
+            if len(self.q_moi_dia_chi_camera.text()) == 0:
+                app_warning_function.check_camera_address()
+            else:
+                new_camera_address = self.q_moi_dia_chi_camera.text()
+
+            # check status of new_camera_enable = "yes"
+            if self.q_moi_che_do.isChecked():
+                new_camera_enable = "yes"
+            else:
+                new_camera_enable = "no"
+
+            # check alarm_option
+            if not self.q_moi_den.isChecked() and \
+                    not self.q_moi_am_thanh.isChecked() and \
+                    not self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+                self.q_moi_am_thanh.setChecked(True)
+            if self.q_moi_den.isChecked():
+                new_camera_alarm_option = "den bao"
+            elif self.q_moi_am_thanh.isChecked():
+                new_camera_alarm_option = "am thanh"
+            elif self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+                new_camera_alarm_option = "ca hai"
+
+            new_camera_sound_type = self.q_moi_combobox_am_thanh.currentText()
+            new_camera_light_type = self.q_moi_combobox_den.currentText()
+            new_camera_time_tu = self.q_moi_time_tu.text()
+            new_camera_time_den = self.q_moi_time_den.text()
+
+            # ----- get width, height of input
+            cap = cv2.VideoCapture(new_camera_address)
+            w = int(cap.get(3))
+            h = int(cap.get(4))
+            cap.release()
+            # -----
+
+            # check draw_region_flag_new to get for if drawn or not
+            if draw_region_flag_new:
+                new_camera_tracking_region = draw_region_points
+                draw_region_flag_new = False
+                draw_region_points = []
+            else:
+                new_camera_tracking_region = create_default_region(w, h, extra_pixels)
+
+            # check draw_count_flag_new to get for if drawn or not
+            new_camera_counting_line = []
+            if draw_count_flag_new:
+                counting_point = draw_counting_points
+                if len(counting_point) % 6 == 0:
+                    j = 0
+                    for i in range(0, len(counting_point), 6):
+                        j += 1
+                        item = {
+                            "id": f"Counting-{j}",
+                            "points": [counting_point[i], counting_point[i + 1], counting_point[i + 2],
+                                       counting_point[i + 3]],
+                            "direction_point": [counting_point[i + 4], counting_point[i + 5]]
                         }
-                    }
-                ]
-            }
+                        new_camera_counting_line.append(item)
+                    draw_count_flag_new = False
+                    draw_counting_points = []
+                else:
+                    app_warning_function.check_new_counting_lines()
+                    draw_count_flag_new = False
+                    draw_counting_points = []
+            else:
+                new_camera_counting_line = create_default_counting_line(w, h, extra_pixels)
 
+            # find camera in data to update more information
+            # load config file for search camera name and edit
+            add_camera_infor_new = read_config_file()
+            add_camera_infor_new_parse = add_camera_infor_new["data"]
+
+            add_camera_search_camera_infor = []
+            for i in range(len(add_camera_infor_new_parse)):
+                if new_camera_name == add_camera_infor_new_parse[i]["name"]:
+                    add_camera_search_camera_infor = add_camera_infor_new_parse[i]
+                    add_position_of_camera = i
+
+            # add data
+            add_camera_search_camera_infor["enable"] = new_camera_enable
+            add_camera_search_camera_infor["alarm_option"] = new_camera_alarm_option
+            add_camera_search_camera_infor["sound"] = new_camera_sound_type
+            add_camera_search_camera_infor["light"] = new_camera_light_type
+            add_camera_search_camera_infor["setting_time"] = [new_camera_time_tu, new_camera_time_den]
+            add_camera_search_camera_infor["url"] = new_camera_address
+            add_camera_search_camera_infor["ROIs"][0]["box"] = [0, 0, w, h]
+            add_camera_search_camera_infor["tracking_regions"][0]["points"] = new_camera_tracking_region
+            add_camera_search_camera_infor["tracking_regions"][0]["trap_lines"]["unlimited_counts"] = new_camera_counting_line
+
+            # update data
+            add_camera_infor_new["data"][add_position_of_camera] = add_camera_search_camera_infor
+            # overwrite the config file after delete camera
             yaml.warnings({'YAMLLoadWarning': False})
-            with open(config_file, 'r') as fs_new:
-                config_new = yaml.load(fs_new)
-            cam_config_new = config_new["input"]["cam_config"]
-            with open(cam_config_new) as json_file_new:
-                json_data_new = json.load(json_file_new)
-            json_file_new.close()
-            # add new camera information
-            data_new = json_data_new["data"]
-            data_new.append(new_camera_data)
-            json_data_new["data"] = data_new
+            with open(config_file, 'r') as fs_add:
+                config_add = yaml.load(fs_add)
+            cam_config_add = config_add["input"]["cam_config"]
             # write json file
-            with open(json_file_new.name, "w") as outfile_new:
-                json.dump(json_data_new, outfile_new)
-            outfile_new.close()
+            with open(cam_config_add, "w") as outfile_add:
+                json.dump(add_camera_infor_new, outfile_add)
+            outfile_add.close()
 
-        # call for update combobox and camera working status
-        self.update_combobox()
-        self.camera_management_working_status()
+            # call for stop all threading and update combobox and camera working status
+            close_window()
+            self.update_combobox()
+            self.camera_management()
+            self.camera_working_status()
+            self.detail_counting_results()
+            app_warning_function.stop_all_thread()
+        else:
+            app_warning_function.non_object_id()
 
     def camera_management_draw_region_new(self):
-        global new_camera_path, draw_region_flag_new
+        global draw_region_flag_new
 
         # check camera address
         # for IP camera
@@ -2233,7 +2383,6 @@ class Ui_MainWindow(object):
                 app_warning_function.check_path_for_ip_camera()
             else:
                 new_camera_address = self.q_moi_dia_chi_camera.text()
-                new_camera_path = new_camera_address
 
             # for webcam ID
         elif self.q_moi_webcam.isChecked():
@@ -2241,11 +2390,10 @@ class Ui_MainWindow(object):
                 app_warning_function.check_path_for_webcam()
             else:
                 new_camera_address = self.q_moi_dia_chi_camera.text()
-                new_camera_path = new_camera_address
 
-        if len(new_camera_path) != 0:
+        if len(new_camera_address) != 0:
             draw_region_flag_new = True
-            draw_region(new_camera_path)
+            draw_region(new_camera_address)
 
     def camera_management_draw_counting_new(self):
         global draw_count_flag_new
@@ -2255,7 +2403,7 @@ class Ui_MainWindow(object):
 
     def camera_management_search_for_edit(self):
         global config_file
-        position_of_camera = None
+
         # check camera name
         if len(self.q_chinh_camera_name.text()) == 0:
             app_warning_function.check_camera_name()
@@ -2273,24 +2421,50 @@ class Ui_MainWindow(object):
                 position_of_camera = i
 
         if len(search_camera_infor) != 0:
-            # print("search camera informarion: ", search_camera_infor)
-            self.q_chinh_camera_id.setText(search_camera_infor["id"])
+            self.q_chinh_camera_id.setText(str(search_camera_infor["id"]))
             self.q_chinh_output_camera_address.setText(search_camera_infor["url"])
         else:
             self.q_chinh_camera_id.setText("None")
             self.q_chinh_output_camera_address.setText("None")
             app_warning_function.check_camera_in_config_file()
 
-        # display camera information
-        # for enable infor
-        if search_camera_infor["enable"] == "yes":
-            self.q_chinh_che_do.setChecked(True)
-        elif search_camera_infor["enable"] == "no":
-            self.q_chinh_che_do.setChecked(False)
+        if len(search_camera_infor) != 0:
+            # display camera information
+            # for enable infor
+            if search_camera_infor["enable"] == "yes":
+                self.q_chinh_che_do.setChecked(True)
+            elif search_camera_infor["enable"] == "no":
+                self.q_chinh_che_do.setChecked(False)
 
-        # alarm option
+            # alarm option
+            if search_camera_infor["alarm_option"] == "den bao":
+                self.q_chinh_den.setChecked(True)
+            elif search_camera_infor["alarm_option"] == "am thanh":
+                self.q_chinh_am_thanh.setChecked(True)
+            elif search_camera_infor["alarm_option"] == "ca hai":
+                self.q_chinh_ca_hai.setChecked(True)
 
-        return position_of_camera, data_edit
+            # alarm option - light type
+            if search_camera_infor["light"] == "nhay nhanh":
+                self.q_chinh_combobox_den.setCurrentText("nhay nhanh")
+            elif search_camera_infor["light"] == "nhap nhay":
+                self.q_chinh_combobox_den.setCurrentText("nhap nhay")
+            elif search_camera_infor["light"] == "mac dinh":
+                self.q_chinh_combobox_den.setCurrentText("mac dinh")
+
+            # alarm option - sound type
+            if search_camera_infor["sound"] == "coi canh sat":
+                self.q_chinh_combobox_am_thanh.setCurrentText("coi canh sat")
+            elif search_camera_infor["sound"] == "tieng pip":
+                self.q_chinh_combobox_am_thanh.setCurrentText("tieng pip")
+            elif search_camera_infor["sound"] == "am canh bao":
+                self.q_chinh_combobox_am_thanh.setCurrentText("am canh bao")
+
+            # setting time
+            self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
+                                                      int(search_camera_infor["setting_time"][0][3:5])))
+            self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
+                                                      int(search_camera_infor["setting_time"][1][3:5])))
 
     def camera_management_rename(self):
         if len(self.q_chinh_camera_new_name.text()) == 0:
@@ -2301,11 +2475,28 @@ class Ui_MainWindow(object):
         # sending request to rename API and return status to rename in config file
         # call for update combobox and camera working status
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
 
     def camera_management_delete_camera(self):
         global config_file
-        position_of_camera_delete, data_delete = self.camera_management_search_for_edit()
+        position_of_camera_delete = None
+
+        # check camera name
+        if len(self.q_chinh_camera_name.text()) == 0:
+            app_warning_function.check_camera_name()
+        else:
+            delete_camera_name = self.q_chinh_camera_name.text()
+
+        # load config file for search camera name and edit
+        data_delete = read_config_file()
+        data_delete_parse = data_delete["data"]
+
+        search_camera_infor = []
+        for i in range(len(data_delete_parse)):
+            if delete_camera_name == data_delete_parse[i]["name"]:
+                search_camera_infor = data_delete_parse[i]
+                position_of_camera_delete = i
+
         # print("position_of_camera_delete, data_delete: ", position_of_camera_delete, data_delete)
         data_delete_parse = data_delete["data"]
         if position_of_camera_delete is not None:
@@ -2323,18 +2514,39 @@ class Ui_MainWindow(object):
                 json.dump(data_delete, outfile_delete)
             outfile_delete.close()
         # call for update combobox and camera working status
+        close_window()
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
+        self.camera_working_status()
+        self.detail_counting_results()
+        app_warning_function.stop_all_thread()
 
     def camera_management_edit_camera_infor(self):
         global draw_region_points, draw_counting_points, config_file
-        position_of_camera_edit, data_edit = self.camera_management_search_for_edit()
+        position_of_camera_edit = None
+
+        # check camera name
+        if len(self.q_chinh_camera_name.text()) == 0:
+            app_warning_function.check_camera_name()
+        else:
+            edit_camera_name = self.q_chinh_camera_name.text()
+
+        # load config file for search camera name and edit
+        data_edit = read_config_file()
+        data_edit_parse = data_edit["data"]
+
+        search_camera_infor = []
+        for i in range(len(data_edit_parse)):
+            if edit_camera_name == data_edit_parse[i]["name"]:
+                search_camera_infor = data_edit_parse[i]
+                position_of_camera_edit = i
+
         if position_of_camera_edit is not None:
             data_edit_parse = data_edit["data"][position_of_camera_edit]
-            print(data_edit_parse)
+            # print(data_edit_parse)
 
             # check and replace if the camera data is difference
-            # for enable infor
+            # for enable information
             edit_camera_enable = None
             if self.q_chinh_che_do.isChecked():
                 edit_camera_enable = "yes"
@@ -2366,8 +2578,9 @@ class Ui_MainWindow(object):
                     app_warning_function.check_new_counting_lines()
                     draw_counting_points = []
 
-                    if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["unlimited_counts"]:
-                        data_edit_parse["tracking_regions"][0]["unlimited_counts"] = edit_camera_counting_line
+
+                if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"]:
+                    data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"] = edit_camera_counting_line
 
             # for alarm option -  check alarm_option
             edit_camera_alarm_option = None
@@ -2382,7 +2595,7 @@ class Ui_MainWindow(object):
 
             # for sound type to alarm
             if self.q_chinh_combobox_am_thanh.currentText() != data_edit_parse["sound"]:
-                data_edit_parse["light"] = self.q_chinh_combobox_den.currentText()
+                data_edit_parse["sound"] = self.q_chinh_combobox_am_thanh.currentText()
 
             # for light type to alarm
             if self.q_chinh_combobox_den.currentText() != data_edit_parse["light"]:
@@ -2404,9 +2617,14 @@ class Ui_MainWindow(object):
             with open(cam_config_edit, "w") as outfile_edit:
                 json.dump(data_edit, outfile_edit)
             outfile_edit.close()
-            # call for update combobox and camera working status
+
+        # call for stop all threading and update combobox and camera working status
+        close_window()
         self.update_combobox()
-        self.camera_management_working_status()
+        self.camera_management()
+        self.camera_working_status()
+        self.detail_counting_results()
+        app_warning_function.stop_all_thread()
 
     def camera_management_draw_region_edit(self):
         camera_path_edit = self.q_chinh_output_camera_address.text()
@@ -2417,7 +2635,7 @@ class Ui_MainWindow(object):
     def camera_management_draw_counting_edit(self):
         draw_counting()
 
-    # FOR MAIN VIEW
+    # FOR MAIN VIEW TAB
     def video(self):
         global config_file, count, width, height
         self.g_tong_khong_kt.display(count)
@@ -2431,6 +2649,171 @@ class Ui_MainWindow(object):
     def setImage(self, image):
         self.g_hien_thi.setPixmap(QtGui.QPixmap.fromImage(image))
 
+    def camera_working_status(self):
+        working_status_config_file_data = read_config_file()
+        if len(str(working_status_config_file_data["object_id"])) > 0:
+            working_status_camera_data = working_status_config_file_data["data"]
+            if len(working_status_camera_data) > 0:
+                working_status_item = {
+                    "camera_name": "",
+                    "working_status": ""
+                }
+                working_status_data = [working_status_item.copy() for i in range(len(working_status_camera_data))]
+
+                for index in range(len(working_status_camera_data)):
+                    working_status_data[index]["camera_name"] = working_status_camera_data[index]["name"]
+                    if working_status_camera_data[index]["enable"] == "yes":
+                        working_status_data[index]["working_status"] = "ready"
+                    else:
+                        working_status_data[index]["working_status"] = "disabled"
+
+                self.g_tt_hoat_dong_table.setRowCount(0)
+                column_count = len(working_status_data[0])
+                row_count = len(working_status_data)
+                self.g_tt_hoat_dong_table.setRowCount(row_count)
+                for row in range(row_count):
+                    for column in range(column_count):
+                        item = str((list(working_status_data[row].values())[column]))
+                        self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+
+    def detail_counting_results(self):
+        detail_counting_results_config_file_data = read_config_file()
+        if len(str(detail_counting_results_config_file_data["object_id"])) > 0:
+            detail_counting_results_camera_data = detail_counting_results_config_file_data["data"]
+            if len(detail_counting_results_camera_data) > 0:
+                detail_counting_results_item = {
+                    "camera_name": "",
+                    "person": 0,
+                    "mask": 0,
+                    "no_mask": 0,
+                }
+
+                detail_counting_results_data = [detail_counting_results_item.copy() for i in range(len(detail_counting_results_camera_data))]
+
+                for index in range(len(detail_counting_results_camera_data)):
+                    detail_counting_results_data[index]["camera_name"] = detail_counting_results_camera_data[index]["name"]
+
+                self.g_ket_qua_chi_tiet_table.setRowCount(0)
+                column_count = len(detail_counting_results_data[0])
+                row_count = len(detail_counting_results_data)
+                self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
+                for row in range(row_count):
+                    for column in range(column_count):
+                        item = str((list(detail_counting_results_data[row].values())[column]))
+                        self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+
+    # FOR INFORMATION AND SETTING TAB
+    def setting_register_object_id(self):
+        global token, config_file
+        # load config file to check object_id information
+        setting_data = read_config_file()
+
+        if len(str(setting_data["object_id"])) > 0:
+            app_warning_function.check_object_id()
+        else:
+            # Check all the necessary information for register object_id
+            if len(self.t_server_ten_thiet_bi.text()) > 0:
+                setting_object_name = str(self.t_server_ten_thiet_bi.text())
+                if len(self.t_server_cap_phep.text()) > 0:
+                    setting_licence = self.t_server_cap_phep.text()
+                    if len(self.t_server_server_dong_bo.text()) > 0:
+                        setting_server_url = self.t_server_server_dong_bo.text()
+                        register_data_form = {
+                            "object_name": setting_object_name,
+                            "licence": setting_licence,
+                        }
+                        # send request to API
+                        api_path = f"http://{setting_server_url}"
+                        headers = {"token": token}
+                        response = requests.request("POST", api_path, json=register_data_form, headers=headers)
+                        object_id_response = response.json()
+                        if object_id_response["status"] == 200:
+                            object_id_data = object_id_response["data"]["id"]
+                            setting_data["object_id"] = object_id_data
+                            # update object_id into config file
+                            yaml.warnings({'YAMLLoadWarning': False})
+                            with open(config_file, 'r') as fs_setting:
+                                config_setting = yaml.load(fs_setting)
+                            cam_config_setting = config_setting["input"]["cam_config"]
+                            # write json file
+                            with open(cam_config_setting, "w") as outfile_setting:
+                                json.dump(setting_data, outfile_setting)
+                            outfile_setting.close()
+                        else:
+                            app_warning_function.register_object_id_falied()
+                    else:
+                        app_warning_function.check_server_url_for_object_id()
+                else:
+                    app_warning_function.check_licence_for_object_id()
+            else:
+                app_warning_function.check_name_for_object_id()
+
+    def setting_check_object_id(self):
+        setting_check_object_id_data = read_config_file()
+        if len(str(setting_check_object_id_data["object_id"])) > 0:
+            object_id = setting_check_object_id_data["object_id"]
+            self.t_server_key.setText(str(object_id))
+            app_warning_function.register_object_id_successful()
+        else:
+            self.t_server_key.setText("None")
+            app_warning_function.non_object_id()
+
+    def password_changing(self):
+        global password, password_file
+        old_pass = self.t_pass_cu.text()
+        new_pass = self.t_pass_moi.text()
+        new_pass_confirm = self.t_pass_xac_nhan_moi.text()
+
+        if len(old_pass) > 0 and len(new_pass) > 0 and len(new_pass_confirm) > 0:
+            if old_pass == password:
+                if len(new_pass) > 10:
+                    if new_pass == new_pass_confirm:
+                        password = new_pass_confirm
+                        new_pass_data = {"password": password}
+                        # write new pass into password file
+                        with open(password_file, "w") as outfile:
+                            json.dump(new_pass_data, outfile)
+                        outfile.close()
+                        app_warning_function.check_password_changed_succesfully()
+                    else:
+                        app_warning_function.check_password_new_and_confirm_new()
+                else:
+                    app_warning_function.check_lenght_password_new()
+            else:
+                app_warning_function.check_password_old()
+        else:
+            app_warning_function.check_password_input()
+
+    def hide_1(self):
+        global hide_1_trigger
+        hide_1_trigger = not hide_1_trigger
+        if hide_1_trigger:
+            self.t_pass_cu.setEchoMode(QtWidgets.QLineEdit.Normal)
+        else:
+            self.t_pass_cu.setEchoMode(QtWidgets.QLineEdit.Password)
+
+    def hide_2(self):
+        global hide_2_trigger
+        hide_2_trigger = not hide_2_trigger
+        if hide_2_trigger:
+            self.t_pass_moi.setEchoMode(QtWidgets.QLineEdit.Normal)
+        else:
+            self.t_pass_moi.setEchoMode(QtWidgets.QLineEdit.Password)
+
+    def hide_3(self):
+        global hide_3_trigger
+        hide_3_trigger = not hide_3_trigger
+        if hide_3_trigger:
+            self.t_pass_xac_nhan_moi.setEchoMode(QtWidgets.QLineEdit.Normal)
+        else:
+            self.t_pass_xac_nhan_moi.setEchoMode(QtWidgets.QLineEdit.Password)
+
+    # FOR TOOL BAR
+    def password_application(self):
+        self.mainwindow2 = MainWindow2(self.report_tab)
+        # self.mainwindow2.closed.connect(self.show)
+        self.mainwindow2.show()
+        # self.hide()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -2439,7 +2822,7 @@ class Ui_MainWindow(object):
         self.label_110.setText(_translate("MainWindow", "Phiên bản:"))
         self.label_80.setText(_translate("MainWindow", "Tên ứng dụng:"))
         self.label_111.setText(_translate("MainWindow", "Face-Mask Recognition APP"))
-        self.label_119.setText(_translate("MainWindow", "Cấp phép:"))
+        self.label_119.setText(_translate("MainWindow", "Mã cấp phép:"))
         self.label_89.setText(_translate("MainWindow", "Đơn vị phát hành:"))
         self.label_117.setText(_translate("MainWindow", "GreenLabs"))
         self.label_90.setText(_translate("MainWindow", "Công ty:"))
@@ -2452,7 +2835,7 @@ class Ui_MainWindow(object):
         self.label_123.setText(_translate("MainWindow", "contact@greenglobal.vn"))
         self.t_tt_phien_ban.setText(_translate("MainWindow", "1.0"))
         self.t_tt_cap_phep.setText(_translate("MainWindow", "abcxyz"))
-        self.label_84.setText(_translate("MainWindow", "Cấp phép"))
+        self.label_84.setText(_translate("MainWindow", "Mã cấp phép"))
         self.label_85.setText(_translate("MainWindow", "Tên thiết bị"))
         self.label_116.setText(_translate("MainWindow", "Server đồng bộ DL"))
         self.label_120.setText(_translate("MainWindow", "Mã định danh"))
@@ -2538,17 +2921,17 @@ class Ui_MainWindow(object):
         self.label_81.setText(_translate("MainWindow", "Tên camera"))
         self.q_chinh_den.setText(_translate("MainWindow", "Đèn báo"))
         self.label_82.setText(_translate("MainWindow", "Đặt thời gian"))
-        self.q_chinh_combobox_am_thanh.setItemText(0, _translate("MainWindow", "coi canh sat"))
-        self.q_chinh_combobox_am_thanh.setItemText(1, _translate("MainWindow", "tieng pip"))
-        self.q_chinh_combobox_am_thanh.setItemText(2, _translate("MainWindow", "am canh bao"))
+        # self.q_chinh_combobox_am_thanh.setItemText(0, _translate("MainWindow", "coi canh sat"))
+        # self.q_chinh_combobox_am_thanh.setItemText(1, _translate("MainWindow", "tieng pip"))
+        # self.q_chinh_combobox_am_thanh.setItemText(2, _translate("MainWindow", "am canh bao"))
         self.label_103.setText(_translate("MainWindow", "Địa chỉ camera"))
         self.label_104.setText(_translate("MainWindow", "Vạch kiểm đếm"))
         self.q_chinh_am_thanh.setText(_translate("MainWindow", "Âm thanh"))
         self.label_107.setText(_translate("MainWindow", "Vùng quan sát"))
         self.label_108.setText(_translate("MainWindow", "Từ"))
-        self.q_chinh_combobox_den.setItemText(0, _translate("MainWindow", "nhap nhay"))
-        self.q_chinh_combobox_den.setItemText(1, _translate("MainWindow", "mac dinh"))
-        self.q_chinh_combobox_den.setItemText(2, _translate("MainWindow", "nhay nhanh"))
+        # self.q_chinh_combobox_den.setItemText(0, _translate("MainWindow", "nhap nhay"))
+        # self.q_chinh_combobox_den.setItemText(1, _translate("MainWindow", "mac dinh"))
+        # self.q_chinh_combobox_den.setItemText(2, _translate("MainWindow", "nhay nhanh"))
         self.label_83.setText(_translate("MainWindow", "Tên mới"))
         self.label_88.setText(_translate("MainWindow", "Camera ID"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_6), _translate("MainWindow", "Chỉnh sửa camera"))
@@ -2601,7 +2984,7 @@ class Ui_MainWindow(object):
         item.setText(_translate("MainWindow", "Năm"))
         self.report_tab.setTabText(self.report_tab.indexOf(self.tab_3), _translate("MainWindow", "Báo cáo và Thống kê"))
         self.menuHome.setTitle(_translate("MainWindow", "Tùy chọn"))
-        self.actionLock.setText(_translate("MainWindow", "Khóa"))
+        self.actionLock.setText(_translate("MainWindow", "Khóa/Mở khóa"))
         self.actionExit.setText(_translate("MainWindow", "Exit"))
         self.exit.setText(_translate("MainWindow", "Thoát"))
 
@@ -2620,6 +3003,99 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         save(self.settings)
         super().closeEvent(event)
+# ------------------------------------------------------  MAIN APPLICATION
+
+
+# ------------------------------------------------------  PASSWORD APPLICATION
+class Ui_Password2(object):
+    def setupUi(self, Password2, report_tab):
+        self.report_tab = report_tab
+        Password2.setObjectName("Password")
+        Password2.resize(400, 139)
+        self.centralwidget = QtWidgets.QWidget(Password2)
+        self.centralwidget.setObjectName("centralwidget")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setGeometry(QtCore.QRect(0, 10, 391, 20))
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        self.label.setObjectName("label")
+        self.pass_input = QtWidgets.QLineEdit(self.centralwidget)
+        self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.pass_input.setGeometry(QtCore.QRect(10, 40, 381, 25))
+        self.pass_input.setAlignment(QtCore.Qt.AlignCenter)
+        self.pass_input.setObjectName("pass_input")
+        self.ok_button = QtWidgets.QPushButton(self.centralwidget)
+        self.ok_button.setGeometry(QtCore.QRect(80, 80, 89, 31))
+        self.ok_button.setObjectName("ok_button")
+        self.cancel_button = QtWidgets.QPushButton(self.centralwidget)
+        self.cancel_button.setGeometry(QtCore.QRect(240, 80, 89, 31))
+        self.cancel_button.setObjectName("cancel_button")
+        self.hide_unhide_button = QtWidgets.QPushButton(self.centralwidget)
+        self.hide_unhide_button.setGeometry(QtCore.QRect(359, 40, 31, 25))
+        self.hide_unhide_button.setText("")
+        self.hide_unhide_button.setObjectName("hide_unhide_button")
+
+        # icon for button
+        self.ok_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+        self.cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+        self.hide_unhide_button.setIcon(QtGui.QIcon('./icon/unhide.png'))
+        # event button
+        self.hide_unhide_button.clicked.connect(self.hide_unhide_pass)
+        self.ok_button.clicked.connect(self.check_password)
+        self.cancel_button.clicked.connect(self.cancel_button_press)
+
+        Password2.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(Password2)
+        self.statusbar.setObjectName("statusbar")
+        Password2.setStatusBar(self.statusbar)
+        self.retranslateUi(Password2)
+        QtCore.QMetaObject.connectSlotsByName(Password2)
+
+    def hide_unhide_pass(self):
+        global hide_trigger
+        hide_trigger = not hide_trigger
+        if hide_trigger:
+            self.pass_input.setEchoMode(QtWidgets.QLineEdit.Normal)
+        else:
+            self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+
+    def check_password(self):
+        global password, lock_trigger
+        if len(self.pass_input.text()) > 0:
+            input_password = self.pass_input.text()
+            if input_password == password:
+                lock_trigger = not lock_trigger
+                if lock_trigger == True:
+                    self.report_tab.hide()
+                    self.close()
+                else:
+                    self.report_tab.show()
+                    self.close()
+            else:
+                app_warning_function.input_pass_for_lock()
+        else:
+            app_warning_function.input_pass_for_lock()
+
+    def cancel_button_press(self):
+        self.pass_input.setText("")
+        self.close()
+
+    def retranslateUi(self, Password2):
+        _translate = QtCore.QCoreApplication.translate
+        Password2.setWindowTitle(_translate("Password", "Password Window"))
+        self.label.setText(_translate("Password", "Vui lòng nhập Mật khẩu!"))
+
+
+class MainWindow2(QtWidgets.QMainWindow, Ui_Password2):
+    def __init__(self, report_tab):
+        global pass_height, pass_width
+        self.report_tab = report_tab
+        super().__init__()
+        self.setupUi(self, self.report_tab)
+        self.setFixedSize(pass_width, pass_height)
+
+    def closeEvent(self, event):
+        super().closeEvent(event)
+# ------------------------------------------------------  PASSWORD APPLICATION
 
 
 if __name__ == '__main__':

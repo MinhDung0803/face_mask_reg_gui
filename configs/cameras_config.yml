@@ -1,0 +1,18 @@
+version: 1.0
+
+input:
+  cam_config: "/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/configs/cameras_config.json"
+
+output:
+  save_videos_folder: /storages/data/dungpm/face-mask-test/Out/Videos
+  save_faces_folder: /storages/data/dungpm/face-mask-test/Out/Faces
+  save_data_folder: /storages/data/dungpm/face-mask-test/Out/Data
+  time_block_video: 10000
+
+view_window:
+  width: 1920
+  height: 1080
+  grid_row: 1
+  grid_col: 1
+
+
