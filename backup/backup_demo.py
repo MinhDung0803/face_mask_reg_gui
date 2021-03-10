@@ -52,6 +52,9 @@ from_time_minute = None
 to_time_hour = None
 to_time_minute = None
 
+# hide/unhide trigger
+hide_trigger = False
+
 # config_file
 # ----- KEY
 config_file = "./configs/all_cameras.yml"
@@ -956,7 +959,8 @@ class Ui_MainWindow(object):
         # export data - 1
         self.export_1.clicked.connect(self.call_export_data_1)
         # set working time
-        self.pushButton_set_time.clicked.connect(self.get_time_setting)
+        # self.pushButton_set_time.clicked.connect(self.get_time_setting)
+        self.pushButton_set_time.clicked.connect(self.newWindow)
         # call display video
         global th
         th = Thread(MainWindow, self.display_no_face_mask_counting)
@@ -1245,6 +1249,12 @@ class Ui_MainWindow(object):
         to_time_hour = self.to_time.text()[:2]
         to_time_minute = self.to_time.text()[3:]
 
+    def newWindow(self):
+        self.mainwindow2 = MainWindow2()
+        # self.mainwindow2.closed.connect(self.show)
+        self.mainwindow2.show()
+        # self.hide()
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "GreenGlobal - GreenLabs - Face-Mask Recognition APP"))
@@ -1306,7 +1316,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setFixedSize(w_width, w_height)
         self.settings = QtCore.QSettings()
-        restore(self.settings)
+        # restore(self.settings)
 
     def closeEvent(self, event):
         save(self.settings)
@@ -1330,6 +1340,79 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 # def app_threading():
 #     t = threading.Thread(target=app, args=[])
 #     t.start()
+
+class Ui_Password2(object):
+    def setupUi(self, Password2):
+
+        # self.input_pass = input_pass
+
+        Password2.setObjectName("Password")
+        Password2.resize(400, 139)
+        self.centralwidget = QtWidgets.QWidget(Password2)
+        self.centralwidget.setObjectName("centralwidget")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setGeometry(QtCore.QRect(0, 10, 391, 20))
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        self.label.setObjectName("label")
+        self.pass_input = QtWidgets.QLineEdit(self.centralwidget)
+        self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.pass_input.setGeometry(QtCore.QRect(10, 40, 381, 25))
+        self.pass_input.setAlignment(QtCore.Qt.AlignCenter)
+        self.pass_input.setObjectName("pass_input")
+        self.ok_button = QtWidgets.QPushButton(self.centralwidget)
+        self.ok_button.setGeometry(QtCore.QRect(80, 80, 89, 31))
+        self.ok_button.setObjectName("ok_button")
+        self.cancel_button = QtWidgets.QPushButton(self.centralwidget)
+        self.cancel_button.setGeometry(QtCore.QRect(240, 80, 89, 31))
+        self.cancel_button.setObjectName("cancel_button")
+        self.hide_unhide_button = QtWidgets.QPushButton(self.centralwidget)
+        self.hide_unhide_button.setGeometry(QtCore.QRect(359, 40, 31, 25))
+        self.hide_unhide_button.setText("")
+        self.hide_unhide_button.setObjectName("hide_unhide_button")
+
+        # icon for button
+        self.ok_button.setIcon(QtGui.QIcon('./icon/apply.jpeg'))
+        self.cancel_button.setIcon(QtGui.QIcon('./icon/cancel.png'))
+        self.hide_unhide_button.setIcon(QtGui.QIcon('./icon/unhide.png'))
+
+        # event button
+        self.hide_unhide_button.clicked.connect(self.hide_unhide_pass)
+
+
+        Password2.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(Password2)
+        self.statusbar.setObjectName("statusbar")
+        Password2.setStatusBar(self.statusbar)
+        self.retranslateUi(Password2)
+        QtCore.QMetaObject.connectSlotsByName(Password2)
+
+    def hide_unhide_pass(self):
+        global hide_trigger
+        hide_trigger = not hide_trigger
+        if hide_trigger:
+            self.pass_input.setEchoMode(QtWidgets.QLineEdit.Normal)
+        else:
+            self.pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+
+    def retranslateUi(self, Password2):
+        _translate = QtCore.QCoreApplication.translate
+        Password2.setWindowTitle(_translate("Password", "Password Window"))
+        self.label.setText(_translate("Password", "Vui lòng nhập Password lần 2 !"))
+
+
+class MainWindow2(QtWidgets.QMainWindow, Ui_Password2):
+
+    # QMainWindow doesn't have a closed signal, so we'll make one.
+    closed = QtCore.pyqtSignal()
+
+    def __init__(self):
+        global w_height, w_width
+        super().__init__()
+        self.setupUi(self)
+        self.setFixedSize(w_width, w_height)
+
+    def closeEvent(self, event):
+        super().closeEvent(event)
 
 
 if __name__ == '__main__':
