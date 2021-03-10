@@ -2276,13 +2276,13 @@ class Ui_MainWindow(object):
             # check alarm_option
             if not self.q_moi_den.isChecked() and \
                     not self.q_moi_am_thanh.isChecked() and \
-                    not self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+                    not self.q_moi_ca_hai.isChecked():
                 self.q_moi_am_thanh.setChecked(True)
             if self.q_moi_den.isChecked():
                 new_camera_alarm_option = "den bao"
             elif self.q_moi_am_thanh.isChecked():
                 new_camera_alarm_option = "am thanh"
-            elif self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+            elif self.q_moi_ca_hai.isChecked():
                 new_camera_alarm_option = "ca hai"
 
             new_camera_sound_type = self.q_moi_combobox_am_thanh.currentText()
@@ -2461,65 +2461,120 @@ class Ui_MainWindow(object):
                 self.q_chinh_combobox_am_thanh.setCurrentText("am canh bao")
 
             # setting time
-            self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
-                                                      int(search_camera_infor["setting_time"][0][3:5])))
-            self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
-                                                      int(search_camera_infor["setting_time"][1][3:5])))
+            if len(search_camera_infor["setting_time"]) > 0:
+                self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
+                                                          int(search_camera_infor["setting_time"][0][3:5])))
+                self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
+                                                          int(search_camera_infor["setting_time"][1][3:5])))
 
     def camera_management_rename(self):
-        if len(self.q_chinh_camera_new_name.text()) == 0:
-            app_warning_function.check_camera_name_for_rename()
+        global config_file
+        rename_data = read_config_file()
+        old_name = self.q_chinh_camera_name.text()
+        if len(str(rename_data["object_id"])) > 0:
+            if len(self.q_chinh_camera_new_name.text()) == 0:
+                app_warning_function.check_camera_name_for_rename()
+            else:
+                name_for_rename = self.q_chinh_camera_new_name.text()
+                if len(str(self.q_chinh_camera_id.text())) > 0:
+
+                    rename_get_camera_id = int(self.q_chinh_camera_id.text())
+                    # find camera in data to update more information
+                    # load config file for search camera name and edit
+                    rename_data_parse = rename_data["data"]
+
+                    rename_camera_data = []
+                    for i in range(len(rename_data_parse)):
+                        if old_name == rename_data_parse[i]["name"]:
+                            rename_camera_data = rename_data_parse[i]
+                            rename_position_of_camera = i
+
+                    # sending request to rename the camera
+                    rename_server_url = f"192.168.111.182:9000/api/cameras/{rename_get_camera_id}"
+                    rename_data_form = {
+                        "name": name_for_rename,
+                    }
+                    api_path = f"http://{rename_server_url}"
+                    headers = {"token": token}
+                    response = requests.request("PATCH", api_path, json=rename_data_form, headers=headers)
+                    rename_data_response = response.json()
+                    if rename_data_response["status"] == 200:
+                        rename_camera_data["name"] = name_for_rename
+
+                        # update data
+                        rename_data["data"][rename_position_of_camera] = rename_camera_data
+                        # overwrite the config file after delete camera
+                        yaml.warnings({'YAMLLoadWarning': False})
+                        with open(config_file, 'r') as fs_rename:
+                            config_rename = yaml.load(fs_rename)
+                        cam_config_rename = config_rename["input"]["cam_config"]
+                        # write json file
+                        with open(cam_config_rename, "w") as outfile_rename:
+                            json.dump(rename_data, outfile_rename)
+                        outfile_rename.close()
+
+                    else:
+                        app_warning_function.camera_rename_failed()
+
+            # call for update combobox and camera working status
+            close_window()
+            self.update_combobox()
+            self.camera_management()
+            self.camera_working_status()
+            self.detail_counting_results()
+            app_warning_function.stop_all_thread()
         else:
-            name_for_rename = self.q_chinh_camera_new_name.text()
-            print("name_for_rename: ", name_for_rename)
-        # sending request to rename API and return status to rename in config file
-        # call for update combobox and camera working status
-        self.update_combobox()
-        self.camera_management()
+            app_warning_function.non_object_id()
 
     def camera_management_delete_camera(self):
         global config_file
-        position_of_camera_delete = None
-
-        # check camera name
-        if len(self.q_chinh_camera_name.text()) == 0:
-            app_warning_function.check_camera_name()
-        else:
-            delete_camera_name = self.q_chinh_camera_name.text()
-
         # load config file for search camera name and edit
         data_delete = read_config_file()
-        data_delete_parse = data_delete["data"]
+        if len(str(data_delete["object_id"])) > 0:
+            # check camera name
+            if len(self.q_chinh_camera_name.text()) == 0:
+                app_warning_function.check_camera_name()
+            else:
+                delete_camera_name = self.q_chinh_camera_name.text()
 
-        search_camera_infor = []
-        for i in range(len(data_delete_parse)):
-            if delete_camera_name == data_delete_parse[i]["name"]:
-                search_camera_infor = data_delete_parse[i]
-                position_of_camera_delete = i
+            if len(str(self.q_chinh_camera_id.text())) > 0:
+                delete_get_camera_id = int(self.q_chinh_camera_id.text())
 
-        # print("position_of_camera_delete, data_delete: ", position_of_camera_delete, data_delete)
-        data_delete_parse = data_delete["data"]
-        if position_of_camera_delete is not None:
-            data_delete_parse.pop(position_of_camera_delete)
-            # print("data_delete: ", len(data_delete_parse))
-            data_delete["data"] = data_delete_parse
+                # load config file for search camera name and edit
+                data_delete_parse = data_delete["data"]
 
-            # overwite the config file after delete camera
-            yaml.warnings({'YAMLLoadWarning': False})
-            with open(config_file, 'r') as fs_delete:
-                config_delete = yaml.load(fs_delete)
-            cam_config_delete = config_delete["input"]["cam_config"]
-            # write json file
-            with open(cam_config_delete, "w") as outfile_delete:
-                json.dump(data_delete, outfile_delete)
-            outfile_delete.close()
-        # call for update combobox and camera working status
-        close_window()
-        self.update_combobox()
-        self.camera_management()
-        self.camera_working_status()
-        self.detail_counting_results()
-        app_warning_function.stop_all_thread()
+                for i in range(len(data_delete_parse)):
+                    if delete_camera_name == data_delete_parse[i]["name"]:
+                        position_of_camera_delete = i
+
+                # sending request to rename the camera
+                delete_server_url = f"192.168.111.182:9000/api/cameras/{delete_get_camera_id}"
+                api_path = f"http://{delete_server_url}"
+                headers = {"token": token}
+                response = requests.request("DELETE", api_path, headers=headers)
+                delete_data_response = response.json()
+                if delete_data_response["status"] == 200:
+                    data_delete_parse.pop(position_of_camera_delete)
+                    data_delete["data"] = data_delete_parse
+
+                    # overwite the config file after delete camera
+                    yaml.warnings({'YAMLLoadWarning': False})
+                    with open(config_file, 'r') as fs_delete:
+                        config_delete = yaml.load(fs_delete)
+                    cam_config_delete = config_delete["input"]["cam_config"]
+                    # write json file
+                    with open(cam_config_delete, "w") as outfile_delete:
+                        json.dump(data_delete, outfile_delete)
+                    outfile_delete.close()
+                # call for update combobox and camera working status
+                close_window()
+                self.update_combobox()
+                self.camera_management()
+                self.camera_working_status()
+                self.detail_counting_results()
+                app_warning_function.stop_all_thread()
+        else:
+            app_warning_function.non_object_id()
 
     def camera_management_edit_camera_infor(self):
         global draw_region_points, draw_counting_points, config_file
@@ -2588,7 +2643,7 @@ class Ui_MainWindow(object):
                 edit_camera_alarm_option = "den bao"
             elif self.q_chinh_am_thanh.isChecked():
                 edit_camera_alarm_option = "am thanh"
-            elif self.q_chinh_ca_hai.q_moi_ca_hai.isChecked():
+            elif self.q_moi_ca_hai.isChecked():
                 edit_camera_alarm_option = "ca hai"
             if edit_camera_alarm_option != data_edit_parse["alarm_option"]:
                 data_edit_parse["alarm_option"] = edit_camera_alarm_option
