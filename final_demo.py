@@ -266,6 +266,26 @@ def save(settings):
             settings.endGroup()
 
 
+def inset_data_into_database(data_in, time_minute, time_hour, time_day, time_month, time_year):
+    # # connect to sql database
+    conn_display = sqlite3.connect('./database/final_data_base.db')
+    c_display = conn_display.cursor()
+
+    data_form_add = pd.DataFrame.from_dict([data_in])
+    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+    print("[INFO]-- Inserted data into Database")
+    conn_display.commit()
+    data_in["num_in"] = 0
+    data_in["num_mask"] = 0
+    data_in["num_no_mask"] = 0
+    data_in["minute"] = time_minute
+    data_in["hour"] = time_hour
+    data_in["day"] = time_day
+    data_in["month"] = time_month
+    data_in["year"] = time_year
+    return data_in
+
+
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
@@ -329,24 +349,60 @@ class Thread(QtCore.QThread):
         # # event count to update no face mask person and active alarm mode
         # event_count = 0
 
-        # prepare data for updating and alarm
-        data_item = {
+        # prepare data for updating information on main view and alarm
+        view_item = {
             "camera_name": None,
+            "camera_id": "",
             "person": 0,
             "no_mask": 0,
             "mask": 0,
-            "status": "stopped",
-            "setting_time": None
+            "status": "disabled",
+            "setting_time": [],
+            "alarm_option": "",
+            "sound": "",
+            "light": "",
         }
 
-        # create core_data with the same lenght as num_cam
-        core_data = [data_item.copy() for i in range(num_cam)]
+        # create view_data with the same length as num_cam
+        view_data = [view_item.copy() for i in range(len(cam_infor_list))]
 
-        # add corresponding name of camera into core_data
-        for cam_index in range(num_cam):
+        # prepare data to insert into data
+        first_time = datetime.datetime.now()
+        database_item = {
+            "object_id": "",
+            "camera_name": "",
+            "camera_id": "",
+            "num_in": 0,
+            "num_mask": 0,
+            "num_no_mask": 0,
+            "minute": first_time.minute,
+            "hour": first_time.hour,
+            "day": first_time.day,
+            "month": first_time.month,
+            "year": first_time.year
+        }
+
+        # create database_data with the same length as num_cam
+        database_data = [database_item.copy() for i in range(num_cam)]
+
+        enable_data = []
+        for cam_index in range(len(cam_infor_list)):
+            # for view_data
+            view_data[cam_index]["camera_name"] = cam_infor_list[cam_index]["name"]
+            view_data[cam_index]["setting_time"] = cam_infor_list[cam_index]["setting_time"]
+            view_data[cam_index]["alarm_option"] = cam_infor_list[cam_index]["alarm_option"]
+            view_data[cam_index]["light"] = cam_infor_list[cam_index]["light"]
+            view_data[cam_index]["sound"] = cam_infor_list[cam_index]["sound"]
+            view_data[cam_index]["camera_id"] = cam_infor_list[cam_index]["id"]
+
             if cam_infor_list[cam_index]["enable"] == "yes":
-                core_data[cam_index]["camera_name"] = cam_infor_list[cam_index]["name"]
-                core_data[cam_index]["setting_time"] = cam_infor_list[cam_index]["setting_time"]
+                enable_data.append(cam_infor_list[cam_index])
+
+        # for database_data
+        for cam_index_enable in range(len(enable_data)):
+            database_data[cam_index_enable]["object_id"] = json_data["object_id"]
+            database_data[cam_index_enable]["camera_name"] = enable_data[cam_index_enable]["name"]
+            database_data[cam_index_enable]["camera_id"] = enable_data[cam_index_enable]["id"]
 
         while self._go:
             if os.path.exists(config_file):
@@ -361,8 +417,6 @@ class Thread(QtCore.QThread):
                     trigger_pause = 0
                     time.sleep(1)
 
-                # self.radioButton_light_option.setChecked(True)
-
                 # get information form the queue
                 for cam_index in range(num_cam):
                     face_mask_output_data = face_mask_buffer[cam_index]
@@ -373,60 +427,107 @@ class Thread(QtCore.QThread):
                         frame_ori = data[1]
                         list_count = data[2]
 
+                        # loading setting time and alarm option of camera
+                        search_camera_infor_main = []
+                        for i in range(len(view_data)):
+                            if database_data[cam_index]["camera_id"] == view_data[i]["camera_id"]:
+                                search_camera_infor_main = view_data[i]
+                                position_of_camera_main = i
+                        setting_time_main = search_camera_infor_main["setting_time"]
+                        alarm_option_main = search_camera_infor_main["alarm_option"]
+                        sound_main = search_camera_infor_main["sound"]
+                        light_main = search_camera_infor_main["light"]
+
+                        # check setting time value
+                        check_setting_time = int(setting_time_main[0][0:2])+int(setting_time_main[0][3:5])+\
+                                             int(setting_time_main[1][0:2])+int(setting_time_main[1][3:5])
+
                         if ind != -1:
-                            # get number of no face mask person
-                            event_count = list_count[0]["Person"]
+                            # get number of person with mask
+                            person_count = int(list_count[0]["Person"])
+                            no_mask_count = int(list_count[0]["None face-mask"])
+
+                            # update working status of camera for main view
+                            view_data[position_of_camera_main]["status"] = "working"
+                            # update counting value of camera for main view
+                            view_data[position_of_camera_main]["person"] = person_count
+                            view_data[position_of_camera_main]["no_mask"] = no_mask_count
+                            view_data[position_of_camera_main]["mask"] = person_count - no_mask_count
+
+                            # check data for num_in, num_no_mask, num_mask
+                            current_data = database_data[cam_index]
 
                             # event
-                            if count < event_count:
-                                count = event_count
+                            if int(current_data["num_in"]) < person_count:
+                                # check no_mask value
+                                if int(current_data["num_no_mask"]) < no_mask_count:
+                                    current_data["num_no_mask"] += int(current_data["num_no_mask"])
 
-                                # update display_no_face_mask_counting
-                                self.g_tong_khong_kt.display(count)
+                                    # # active alarm here
+                                    # # choosing alarm sound based on sound option
+                                    # sound_file = "./sound_alarm/police.mp3"
+                                    # if sound_main == "coi canh sat":
+                                    #     sound_file = "./sound_alarm/police.mp3"
+                                    # if sound_main == "tieng pip":
+                                    #     sound_file = "./sound_alarm/pip.mp3"
+                                    # if sound_main == "am canh bao":
+                                    #     sound_file = "./sound_alarm/canhbao.mp3"
+                                    # # play sound alarm
+                                    # if alarm_option_main == "am thanh":
+                                    #     play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                    # elif alarm_option_main == "den bao":
+                                    #     print("[INFO]-- Light")
+                                    # elif alarm_option_main == "ca hai":
+                                    #     print("[INFO]-- Sound and light")
+                                    #     play_alarm_audio_threading.play_audio_by_threading(sound_file)
 
-                                # insert data into database when detect new no-face-mask person
-                                # AND also check check setting time status
-                                if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
-                                    # check setting time (FROM)
-                                    information1_time = datetime.datetime.now()
-                                    print("Time1:", information1_time)
-                                    if (int(information1_time.hour) >= int(from_time_hour)) \
-                                            and (int(information1_time.minute) >= int(from_time_minute)):
-                                        data = datetime.datetime.now()
-                                        data_form = {"Camera_name": insert_name,
-                                                     "Minute": data.minute,
-                                                     "Hour": data.hour,
-                                                     "Day": data.day,
-                                                     "Month": data.month,
-                                                     "Year": data.year}
-                                        data_form_add = pd.DataFrame.from_dict([data_form])
-                                        data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                                        print("[INFO]-- Inserted data into Database")
-                                        conn_display.commit()
-                                else:
-                                    data = datetime.datetime.now()
-                                    data_form = {"Camera_name": insert_name,
-                                                 "Minute": data.minute,
-                                                 "Hour": data.hour,
-                                                 "Day": data.day,
-                                                 "Month": data.month,
-                                                 "Year": data.year}
-                                    data_form_add = pd.DataFrame.from_dict([data_form])
-                                    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-                                    print("[INFO]-- Inserted data into Database")
-                                    conn_display.commit()
+                            current_data["num_in"] += int(current_data["num_in"])
+                            current_data["num_mask"] = current_data["num_in"] - current_data["num_no_mask"]
 
-                                # active alarm
-                                if sound_alarm == 1:
-                                    print("[INFO]-- Sound")
-                                    sound_file = "./sound_alarm/police.mp3"
-                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                                elif light_alarm == 1:
-                                    print("[INFO]-- Light")
-                                else:
-                                    print("[INFO]-- Sound and light")
-                                    sound_file = "./sound_alarm/police.mp3"
-                                    play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                            time_now = datetime.datetime.now()
+
+                            if time_now.minute == 1:
+                                if current_data["num_in"] != 0:
+                                    if check_setting_time != 0:
+                                        if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
+                                                and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
+                                                and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
+                                                and (int(time_now.minute) < int(setting_time_main[1][3:5])):
+                                            database_data[cam_index] = inset_data_into_database(
+                                                current_data,
+                                                time_now.hour,
+                                                time_now.day,
+                                                time_now.month,
+                                                time_now.year)
+                                    else:
+                                        database_data[cam_index] = inset_data_into_database(current_data,
+                                                                                            time_now.minute,
+                                                                                            time_now.hour,
+                                                                                            time_now.day,
+                                                                                            time_now.month,
+                                                                                            time_now.year)
+                            elif time_now.minute > current_data["minute"]:
+                                if current_data["num_in"] != 0:
+                                    if check_setting_time != 0:
+                                        if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
+                                                and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
+                                                and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
+                                                and (int(time_now.minute) < int(setting_time_main[1][3:5])):
+                                            database_data[cam_index] = inset_data_into_database(
+                                                current_data,
+                                                time_now.minute,
+                                                time_now.hour,
+                                                time_now.day,
+                                                time_now.month,
+                                                time_now.year)
+                                    else:
+                                        database_data[cam_index] = inset_data_into_database(
+                                            current_data,
+                                            time_now.minute,
+                                            time_now.hour,
+                                            time_now.day,
+                                            time_now.month,
+                                            time_now.year)
 
                             # display on APP
                             result_frame = cv2.resize(frame_ori, (width, height))
@@ -437,22 +538,71 @@ class Thread(QtCore.QThread):
                                                              bytesPerLine, QtGui.QImage.Format_RGB888)
                             p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
                             self.changePixmap.emit(p)
-
+                        else:
+                            # update working status of camera for main view
+                            view_data[position_of_camera_main]["status"] = "interrupted"
                     else:
                         time.sleep(no_job_sleep_time)
 
-                # check setting time (TO) for STOP
-                information2_time = datetime.datetime.now()
-                # print("Time2:", information2_time)
-                if set_working_time_flag and to_time_hour is not None and to_time_minute is not None:
-                    if (int(information2_time.hour) >= int(to_time_hour)) \
-                            and (int(information2_time.minute) >= int(to_time_minute)):
-                        print("[INFO] All threads are stopped because of out of time (Setting time)")
-                        forward_message.put("stop")
-                        trigger_stop = 0
-                        time.sleep(1)
-                        self.stop_thread()
+                # call API to update data
 
+                # update main view - working status
+                working_status_data_main = []
+                for i in range(len(view_data)):
+                    working_status_item = [view_data[i]["camera_name"], view_data[i]["status"]]
+                    working_status_data_main.append(working_status_item)
+                self.g_tt_hoat_dong_table.setRowCount(0)
+                column_count = len(working_status_data_main[0])
+                row_count = len(working_status_data_main)
+                self.g_tt_hoat_dong_table.setRowCount(row_count)
+                for row in range(row_count):
+                    for column in range(column_count):
+                        item = str((list(working_status_data_main[row])[column]))
+                        self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+
+                # update main view - detail result
+                detail_result_main = []
+                for i in range(len(view_data)):
+                    detail_result_main_item = [view_data[i]["camera_name"],
+                                               view_data[i]["person"],
+                                               view_data[i]["mask"],
+                                               view_data[i]["no_mask"]]
+                    detail_result_main.append(detail_result_main_item)
+                self.g_ket_qua_chi_tiet_table.setRowCount(0)
+                column_count = len(detail_result_main[0])
+                row_count = len(detail_result_main)
+                self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
+                for row in range(row_count):
+                    for column in range(column_count):
+                        item = str((list(detail_result_main[row])[column]))
+                        self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+
+                # update main view - genetal result
+                all_person = 0
+                all_no_mask = 0
+                all_mask = 0
+
+                for i in range(len(view_data)):
+                    all_person = all_person+int(view_data[i]["person"])
+                    all_no_mask = all_no_mask+int(view_data[i]["no_mask"])
+                    all_mask = all_person-all_no_mask
+
+                # display them
+                # self.g_tong_vao.display(all_person)
+                # self.g_tong_kt.display(all_mask)
+                # self.g_tong_khong_kt(all_no_mask)
+
+                # # check setting time (TO) for STOP
+                # information2_time = datetime.datetime.now()
+                # # print("Time2:", information2_time)
+                # if set_working_time_flag and to_time_hour is not None and to_time_minute is not None:
+                #     if (int(information2_time.hour) >= int(to_time_hour)) \
+                #             and (int(information2_time.minute) >= int(to_time_minute)):
+                #         print("[INFO] All threads are stopped because of out of time (Setting time)")
+                #         forward_message.put("stop")
+                #         trigger_stop = 0
+                #         time.sleep(1)
+                #         self.stop_thread()
             else:
                 app_warning_function.check_config_file()
                 time.sleep(0.5)
@@ -1463,7 +1613,7 @@ class Ui_MainWindow(object):
         self.q_moi_ca_hai.setGeometry(QtCore.QRect(130, 330, 81, 21))
         self.q_moi_ca_hai.setObjectName("q_moi_ca_hai")
         self.label_78 = QtWidgets.QLabel(self.tab_5)
-        self.label_78.setGeometry(QtCore.QRect(130, 370, 41, 17))
+        self.label_78.setGeometry(QtCore.QRect(130, 370, 16, 17))
         self.label_78.setObjectName("label_78")
         self.label_96 = QtWidgets.QLabel(self.tab_5)
         self.label_96.setGeometry(QtCore.QRect(10, 250, 121, 17))
@@ -1619,7 +1769,7 @@ class Ui_MainWindow(object):
         self.label_107.setGeometry(QtCore.QRect(10, 210, 121, 17))
         self.label_107.setObjectName("label_107")
         self.label_108 = QtWidgets.QLabel(self.tab_6)
-        self.label_108.setGeometry(QtCore.QRect(130, 410, 41, 17))
+        self.label_108.setGeometry(QtCore.QRect(130, 410, 21, 17))
         self.label_108.setObjectName("label_108")
         self.q_chinh_combobox_den = QtWidgets.QComboBox(self.tab_6)
         self.q_chinh_combobox_den.setGeometry(QtCore.QRect(240, 290, 111, 21))
@@ -2029,8 +2179,10 @@ class Ui_MainWindow(object):
                                                              save,
                                                              export)
         if len(return_data) != 0:
+            self.b_t1_table.setRowCount(0)
             column_count = len(return_data[0])
             row_count = len(return_data)
+            self.b_t1_table.setRowCount(row_count)
             for row in range(row_count):
                 for column in range(column_count):
                     item = str((list(return_data[row])[column]))
@@ -2059,8 +2211,10 @@ class Ui_MainWindow(object):
                                                              save,
                                                              export)
         if len(return_data) != 0:
+            self.b_t2_table.setRowCount(0)
             column_count = len(return_data[0])
             row_count = len(return_data)
+            self.b_t2_table.setRowCount(row_count)
             for row in range(row_count):
                 for column in range(column_count):
                     item = str((list(return_data[row])[column]))
@@ -2190,7 +2344,7 @@ class Ui_MainWindow(object):
                 if camera_id_data["status"] == 200:
                     self.q_moi_camera_id.setText(str(camera_id_data["data"]["id"]))
                     new_camera_data = {
-                        "id": camera_id_data["data"]["id"],
+                        "id": str(camera_id_data["data"]["id"]),
                         "name": assign_new_camera_name,
                         "enable": "",
                         "alarm_option": "",
@@ -2276,13 +2430,13 @@ class Ui_MainWindow(object):
             # check alarm_option
             if not self.q_moi_den.isChecked() and \
                     not self.q_moi_am_thanh.isChecked() and \
-                    not self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+                    not self.q_moi_ca_hai.isChecked():
                 self.q_moi_am_thanh.setChecked(True)
             if self.q_moi_den.isChecked():
                 new_camera_alarm_option = "den bao"
             elif self.q_moi_am_thanh.isChecked():
                 new_camera_alarm_option = "am thanh"
-            elif self.q_moi_ca_hai.q_moi_ca_hai.isChecked():
+            elif self.q_moi_ca_hai.isChecked():
                 new_camera_alarm_option = "ca hai"
 
             new_camera_sound_type = self.q_moi_combobox_am_thanh.currentText()
@@ -2461,65 +2615,123 @@ class Ui_MainWindow(object):
                 self.q_chinh_combobox_am_thanh.setCurrentText("am canh bao")
 
             # setting time
-            self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
-                                                      int(search_camera_infor["setting_time"][0][3:5])))
-            self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
-                                                      int(search_camera_infor["setting_time"][1][3:5])))
+            if len(search_camera_infor["setting_time"]) > 0:
+                self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
+                                                          int(search_camera_infor["setting_time"][0][3:5])))
+                self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
+                                                          int(search_camera_infor["setting_time"][1][3:5])))
 
     def camera_management_rename(self):
-        if len(self.q_chinh_camera_new_name.text()) == 0:
-            app_warning_function.check_camera_name_for_rename()
+        global config_file
+        rename_data = read_config_file()
+        old_name = self.q_chinh_camera_name.text()
+        if len(str(rename_data["object_id"])) > 0:
+            if len(self.q_chinh_camera_new_name.text()) == 0:
+                app_warning_function.check_camera_name_for_rename()
+            else:
+                name_for_rename = self.q_chinh_camera_new_name.text()
+                if len(str(self.q_chinh_camera_id.text())) > 0:
+
+                    rename_get_camera_id = int(self.q_chinh_camera_id.text())
+                    # find camera in data to update more information
+                    # load config file for search camera name and edit
+                    rename_data_parse = rename_data["data"]
+
+                    rename_camera_data = []
+                    for i in range(len(rename_data_parse)):
+                        if old_name == rename_data_parse[i]["name"]:
+                            rename_camera_data = rename_data_parse[i]
+                            rename_position_of_camera = i
+
+                    # sending request to rename the camera
+                    rename_server_url = f"192.168.111.182:9000/api/cameras/{rename_get_camera_id}"
+                    rename_data_form = {
+                        "name": name_for_rename,
+                    }
+                    api_path = f"http://{rename_server_url}"
+                    headers = {"token": token}
+                    response = requests.request("PATCH", api_path, json=rename_data_form, headers=headers)
+                    rename_data_response = response.json()
+                    if rename_data_response["status"] == 200:
+                        # set status rename sucessfull
+                        self.q_chinh_rename_status.setText("Đổi tên thành công!")
+
+                        rename_camera_data["name"] = name_for_rename
+
+                        # update data
+                        rename_data["data"][rename_position_of_camera] = rename_camera_data
+                        # overwrite the config file after delete camera
+                        yaml.warnings({'YAMLLoadWarning': False})
+                        with open(config_file, 'r') as fs_rename:
+                            config_rename = yaml.load(fs_rename)
+                        cam_config_rename = config_rename["input"]["cam_config"]
+                        # write json file
+                        with open(cam_config_rename, "w") as outfile_rename:
+                            json.dump(rename_data, outfile_rename)
+                        outfile_rename.close()
+
+                    else:
+                        app_warning_function.camera_rename_failed()
+
+            # call for update combobox and camera working status
+            close_window()
+            self.update_combobox()
+            self.camera_management()
+            self.camera_working_status()
+            self.detail_counting_results()
+            app_warning_function.stop_all_thread()
         else:
-            name_for_rename = self.q_chinh_camera_new_name.text()
-            print("name_for_rename: ", name_for_rename)
-        # sending request to rename API and return status to rename in config file
-        # call for update combobox and camera working status
-        self.update_combobox()
-        self.camera_management()
+            app_warning_function.non_object_id()
 
     def camera_management_delete_camera(self):
         global config_file
-        position_of_camera_delete = None
-
-        # check camera name
-        if len(self.q_chinh_camera_name.text()) == 0:
-            app_warning_function.check_camera_name()
-        else:
-            delete_camera_name = self.q_chinh_camera_name.text()
-
         # load config file for search camera name and edit
         data_delete = read_config_file()
-        data_delete_parse = data_delete["data"]
+        if len(str(data_delete["object_id"])) > 0:
+            # check camera name
+            if len(self.q_chinh_camera_name.text()) == 0:
+                app_warning_function.check_camera_name()
+            else:
+                delete_camera_name = self.q_chinh_camera_name.text()
 
-        search_camera_infor = []
-        for i in range(len(data_delete_parse)):
-            if delete_camera_name == data_delete_parse[i]["name"]:
-                search_camera_infor = data_delete_parse[i]
-                position_of_camera_delete = i
+            if len(str(self.q_chinh_camera_id.text())) > 0:
+                delete_get_camera_id = int(self.q_chinh_camera_id.text())
 
-        # print("position_of_camera_delete, data_delete: ", position_of_camera_delete, data_delete)
-        data_delete_parse = data_delete["data"]
-        if position_of_camera_delete is not None:
-            data_delete_parse.pop(position_of_camera_delete)
-            # print("data_delete: ", len(data_delete_parse))
-            data_delete["data"] = data_delete_parse
+                # load config file for search camera name and edit
+                data_delete_parse = data_delete["data"]
 
-            # overwite the config file after delete camera
-            yaml.warnings({'YAMLLoadWarning': False})
-            with open(config_file, 'r') as fs_delete:
-                config_delete = yaml.load(fs_delete)
-            cam_config_delete = config_delete["input"]["cam_config"]
-            # write json file
-            with open(cam_config_delete, "w") as outfile_delete:
-                json.dump(data_delete, outfile_delete)
-            outfile_delete.close()
-        # call for update combobox and camera working status
-        close_window()
-        self.update_combobox()
-        self.camera_management()
-        self.camera_working_status()
-        self.detail_counting_results()
-        app_warning_function.stop_all_thread()
+                for i in range(len(data_delete_parse)):
+                    if delete_camera_name == data_delete_parse[i]["name"]:
+                        position_of_camera_delete = i
+
+                # sending request to rename the camera
+                delete_server_url = f"192.168.111.182:9000/api/cameras/{delete_get_camera_id}"
+                api_path = f"http://{delete_server_url}"
+                headers = {"token": token}
+                response = requests.request("DELETE", api_path, headers=headers)
+                delete_data_response = response.json()
+                if delete_data_response["status"] == 200:
+                    data_delete_parse.pop(position_of_camera_delete)
+                    data_delete["data"] = data_delete_parse
+
+                    # overwite the config file after delete camera
+                    yaml.warnings({'YAMLLoadWarning': False})
+                    with open(config_file, 'r') as fs_delete:
+                        config_delete = yaml.load(fs_delete)
+                    cam_config_delete = config_delete["input"]["cam_config"]
+                    # write json file
+                    with open(cam_config_delete, "w") as outfile_delete:
+                        json.dump(data_delete, outfile_delete)
+                    outfile_delete.close()
+                # call for update combobox and camera working status
+                close_window()
+                self.update_combobox()
+                self.camera_management()
+                self.camera_working_status()
+                self.detail_counting_results()
+                app_warning_function.stop_all_thread()
+        else:
+            app_warning_function.non_object_id()
 
     def camera_management_edit_camera_infor(self):
         global draw_region_points, draw_counting_points, config_file
@@ -2588,7 +2800,7 @@ class Ui_MainWindow(object):
                 edit_camera_alarm_option = "den bao"
             elif self.q_chinh_am_thanh.isChecked():
                 edit_camera_alarm_option = "am thanh"
-            elif self.q_chinh_ca_hai.q_moi_ca_hai.isChecked():
+            elif self.q_moi_ca_hai.isChecked():
                 edit_camera_alarm_option = "ca hai"
             if edit_camera_alarm_option != data_edit_parse["alarm_option"]:
                 data_edit_parse["alarm_option"] = edit_camera_alarm_option

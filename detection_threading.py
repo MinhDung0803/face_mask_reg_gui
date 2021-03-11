@@ -105,7 +105,7 @@ def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detec
 
 
 
-							# detection_inf = [head_boxes, head_scores, body_boxes, body_scores]
+							detection_inf = [head_boxes, head_scores, body_boxes, body_scores]
 
 							# # face mask
 							# bboxes, class_ids, scores = mask_detection.detection(frame_ori, conf_thresh=0.3,

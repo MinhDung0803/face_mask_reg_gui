@@ -536,14 +536,24 @@ def parser_cam_infor(cam_infor_list):
         # print("tracking_regions_data: ", tracking_regions_data)
         tracking_region_list = region_util.create_tracking_regions(tracking_regions_data)
 
-        # if cam_infor["enable"] == "yes":
-        cam_id_list.append(id)
-        input_video_list.append(url)
-        frame_drop_list.append(frame_drop)
-        frame_step_list.append(frame_step)
-        tracking_scale_list.append(tracking_scale)
-        regionboxs_list.append(regionbox_list)
-        tracking_regions_list.append(tracking_region_list)
+        # with enable infor
+        if cam_infor["enable"] == "yes":
+            cam_id_list.append(id)
+            input_video_list.append(url)
+            frame_drop_list.append(frame_drop)
+            frame_step_list.append(frame_step)
+            tracking_scale_list.append(tracking_scale)
+            regionboxs_list.append(regionbox_list)
+            tracking_regions_list.append(tracking_region_list)
+
+        # # without enable infor
+        # cam_id_list.append(id)
+        # input_video_list.append(url)
+        # frame_drop_list.append(frame_drop)
+        # frame_step_list.append(frame_step)
+        # tracking_scale_list.append(tracking_scale)
+        # regionboxs_list.append(regionbox_list)
+        # tracking_regions_list.append(tracking_region_list)
 
     return input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list,\
            tracking_regions_list
