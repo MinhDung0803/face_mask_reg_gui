@@ -544,3 +544,129 @@ import json
 #     data = response.json()["data"]
 
 import requests
+# import json
+# import yaml
+# import face_mask_threading
+# config_file = "./configs/cameras_config.yml"
+# def read_config_file():
+#     global config_file
+#     # load dat in config file
+#     yaml.warnings({'YAMLLoadWarning': False})
+#     with open(config_file, 'r') as fs:
+#         config = yaml.load(fs)
+#     cam_config_first_time = config["input"]["cam_config"]
+#     with open(cam_config_first_time) as json_file:
+#         json_data = json.load(json_file)
+#     json_file.close()
+#     # data = json_data["data"]
+#     return json_data
+#
+# json_data = read_config_file()
+# cam_infor_list = json_data["data"]
+#
+# # print("cam_infor_list", cam_infor_list)
+#
+# # parse all information of each camera
+# input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
+# tracking_regions_list = face_mask_threading.parser_cam_infor(cam_infor_list)
+#
+# num_cam = len(input_video_list)
+# # print("num_cam: ", num_cam)
+#
+# # prepare data for updating information on main view and alarm
+# view_item = {
+#     "camera_name": None,
+#     "camera_id": None,
+#     "person": 0,
+#     "no_mask": 0,
+#     "mask": 0,
+#     "status": "stopped",
+#     "setting_time": [],
+#     "alarm_option": "",
+#     "sound": "",
+#     "light": "",
+# }
+#
+# # create view_data with the same length as num_cam
+# view_data = [view_item.copy() for i in range(len(cam_infor_list))]
+#
+# # prepare data to insert into data
+# database_item = {
+#     "object_id": "",
+#     "camera_name": "",
+#     "camera_id": None,
+#     "num_in": 0,
+#     "num_mask": 0,
+#     "num_no_mask": 0,
+#     "minute": None,
+#     "hour": None,
+#     "day": None,
+#     "month": None,
+#     "year": None
+# }
+#
+# # create database_data with the same lenght as num_cam
+# database_data = [database_item.copy() for i in range(num_cam)]
+#
+# enable_data = []
+# for cam_index in range(len(cam_infor_list)):
+#     # for view_data
+#     view_data[cam_index]["camera_name"] = cam_infor_list[cam_index]["name"]
+#     view_data[cam_index]["setting_time"] = cam_infor_list[cam_index]["setting_time"]
+#     view_data[cam_index]["alarm_option"] = cam_infor_list[cam_index]["alarm_option"]
+#     view_data[cam_index]["light"] = cam_infor_list[cam_index]["light"]
+#     view_data[cam_index]["sound"] = cam_infor_list[cam_index]["sound"]
+#
+#     if cam_infor_list[cam_index]["enable"] == "yes":
+#         enable_data.append(cam_infor_list[cam_index])
+#
+# # for database_data
+# for cam_index_enable in range(len(enable_data)):
+#     database_data[cam_index_enable]["object_id"] = json_data["object_id"]
+#     database_data[cam_index_enable]["camera_name"] = enable_data[cam_index_enable]["name"]
+#     database_data[cam_index_enable]["camera_id"] = enable_data[cam_index_enable]["id"]
+#
+# print("len database_data: ", database_data)
+# print("---"*20)
+# print("len view_data: ", len(view_data))
+
+
+setting_time = ["00:00", "12:20"]
+print(int(setting_time[0][0:2]))
+print(int(setting_time[0][3:5]))
+
+# # insert data into database when detect new no-face-mask person
+# # AND also check check setting time status
+# if set_working_time_flag and from_time_hour is not None and from_time_minute is not None:
+#     # check setting time (FROM)
+#     information1_time = datetime.datetime.now()
+#     print("Time1:", information1_time)
+#     if (int(information1_time.hour) >= int(from_time_hour)) \
+#             and (int(information1_time.minute) >= int(from_time_minute)):
+#         data = datetime.datetime.now()
+#         data_form = {"Camera_name": insert_name,
+#                      "Minute": data.minute,
+#                      "Hour": data.hour,
+#                      "Day": data.day,
+#                      "Month": data.month,
+#                      "Year": data.year}
+#         data_form_add = pd.DataFrame.from_dict([data_form])
+#         data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+#         print("[INFO]-- Inserted data into Database")
+#         conn_display.commit()
+# else:
+#     data = datetime.datetime.now()
+#     data_form = {"Camera_name": insert_name,
+#                  "Minute": data.minute,
+#                  "Hour": data.hour,
+#                  "Day": data.day,
+#                  "Month": data.month,
+#                  "Year": data.year}
+#     data_form_add = pd.DataFrame.from_dict([data_form])
+#     data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
+#     print("[INFO]-- Inserted data into Database")
+#     conn_display.commit()
+
+
+import requests
+

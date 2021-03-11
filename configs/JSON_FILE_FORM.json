@@ -1,6 +1,12 @@
 {
   "data": [
     { "id": "1",
+      "name": "A",
+      "enable": "yes",
+      "alarm_option": "den bao",
+      "sound": "coi canh sat",
+      "light": "nhap nhay",
+      "setting_time": ["00:00", "00:00"],
       "url": "rtsp://admin:Admin123@192.168.111.210/1",
       "frame_drop": 1,
       "frame_step": 1,
