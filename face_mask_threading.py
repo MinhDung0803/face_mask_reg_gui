@@ -371,7 +371,7 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
                             show_box = [int(bbox[0] * up_scale), int(bbox[1] * up_scale), int(bbox[2] * up_scale),
                                         int(bbox[3] * up_scale)]
 
-                            # OLD
+                            # # OLD
                             # cv2.rectangle(frame_ori, (show_box[0], show_box[1]), (show_box[2], show_box[3]), color,
                             #               bbox_thick)
 
@@ -536,24 +536,24 @@ def parser_cam_infor(cam_infor_list):
         # print("tracking_regions_data: ", tracking_regions_data)
         tracking_region_list = region_util.create_tracking_regions(tracking_regions_data)
 
-        # with enable infor
-        if cam_infor["enable"] == "yes":
-            cam_id_list.append(id)
-            input_video_list.append(url)
-            frame_drop_list.append(frame_drop)
-            frame_step_list.append(frame_step)
-            tracking_scale_list.append(tracking_scale)
-            regionboxs_list.append(regionbox_list)
-            tracking_regions_list.append(tracking_region_list)
+        # # with enable infor
+        # if cam_infor["enable"] == "yes":
+        #     cam_id_list.append(id)
+        #     input_video_list.append(url)
+        #     frame_drop_list.append(frame_drop)
+        #     frame_step_list.append(frame_step)
+        #     tracking_scale_list.append(tracking_scale)
+        #     regionboxs_list.append(regionbox_list)
+        #     tracking_regions_list.append(tracking_region_list)
 
-        # # without enable infor
-        # cam_id_list.append(id)
-        # input_video_list.append(url)
-        # frame_drop_list.append(frame_drop)
-        # frame_step_list.append(frame_step)
-        # tracking_scale_list.append(tracking_scale)
-        # regionboxs_list.append(regionbox_list)
-        # tracking_regions_list.append(tracking_region_list)
+        # without enable infor
+        cam_id_list.append(id)
+        input_video_list.append(url)
+        frame_drop_list.append(frame_drop)
+        frame_step_list.append(frame_step)
+        tracking_scale_list.append(tracking_scale)
+        regionboxs_list.append(regionbox_list)
+        tracking_regions_list.append(tracking_region_list)
 
     return input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list,\
            tracking_regions_list
