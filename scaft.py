@@ -342,24 +342,30 @@ import json
 #
 # print("list data: ", list_data)
 
-# import password_threading
-# import cv2
-# old_password = "dungpm@greenglobal.vn"
-# # password_threading.password_by_threading()
-# cap = cv2.VideoCapture("rtsp://admin:Admin123@192.168.111.211/1")
-# # ret, frame = cap.read()
-# while True:
-#     ret, frame = cap.read()
-#     frame = cv2.resize(frame, (480, 360))
-#     if ret:
-#         cv2.imshow("show", frame)
-#         key = cv2.waitKey(1)
-#         if key == ord("c"):
-#             password_threading.password_by_threading()
-#         if key == ord("q"):
-#             break
-# cap.release()
-# cv2.destroyAllWindows()
+
+import cv2
+old_password = "dungpm@greenglobal.vn"
+# password_threading.password_by_threading()
+cap = cv2.VideoCapture(0)
+# ret, frame = cap.read()
+while True:
+    ret, frame = cap.read()
+    frame = cv2.resize(frame, (480, 360))
+    if ret:
+        cv2.imshow("show", frame)
+        key = cv2.waitKey(1)
+        if key == ord("q"):
+            break
+cap.release()
+cv2.destroyAllWindows()
+
+a = [
+    [[424, 90, 517, 201], [1292, 597, 1534, 918], [147, 207, 278, 364], [634, 22, 733, 148], [753, 302, 933, 520], [1691, 488, 1905, 718]],
+    [0.7914899, 0.7924527, 0.83863705, 0.8657681, 0.86999285, 0.88042307],
+    [[291, 92, 596, 346], [598, 14, 814, 491]],
+    [0.73263156, 0.8111926]
+]
+
 
 # from PyQt5.QtGui import QApplication, QMainWindow, QPushButton, \
 #             QLabel, QVBoxLayout, QWidget
@@ -630,10 +636,10 @@ import requests
 # print("---"*20)
 # print("len view_data: ", len(view_data))
 
-
-setting_time = ["00:00", "12:20"]
-print(int(setting_time[0][0:2]))
-print(int(setting_time[0][3:5]))
+#
+# setting_time = ["00:00", "12:20"]
+# print(int(setting_time[0][0:2]))
+# print(int(setting_time[0][3:5]))
 
 # # insert data into database when detect new no-face-mask person
 # # AND also check check setting time status

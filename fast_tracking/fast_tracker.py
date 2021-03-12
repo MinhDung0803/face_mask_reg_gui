@@ -759,7 +759,6 @@ class FastTracker:
             # else:
             #     colors.append((255, 255, 255))
 
-
             # colors.append((255, 255, 255))
             
             tails.append(track.moving_list.copy())

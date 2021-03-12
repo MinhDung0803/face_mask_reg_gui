@@ -238,3 +238,10 @@ def camera_rename_failed():
     alert.setText('Thực hiện đổi tên cho Camera hiện tại thất bại do sự cố ngắt kết nối mạng hoặc một vài lí do khác, vui lòng kiểm tra '
                   'đường truyền và thực hiện lại!')
     alert.exec_()
+
+def camera_delete_failed():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText('Thực hiện xóa Camera hiện tại thất bại do sự cố ngắt kết nối mạng hoặc một vài lí do khác, vui lòng kiểm tra '
+                  'đường truyền và thực hiện lại!')
+    alert.exec_()

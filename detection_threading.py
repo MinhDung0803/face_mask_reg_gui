@@ -104,18 +104,20 @@ def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detec
 							class_ids = [0]*len(bboxes)
 
 
+							# do not use
+							# detection_inf = [head_boxes, head_scores, body_boxes, body_scores]
 
-							detection_inf = [head_boxes, head_scores, body_boxes, body_scores]
-
-							# # face mask
+							# face mask
 							# bboxes, class_ids, scores = mask_detection.detection(frame_ori, conf_thresh=0.3,
 							# 													 iou_thresh=0.4,
 							# 													 target_shape=(360, 360))
-							for bbox, class_id in zip(bboxes, class_ids):
-								if class_id == 0:
-									cv2.rectangle(frame_ori, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 3)
-								else:
-									cv2.rectangle(frame_ori, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 0, 255), 3)
+							# for bbox, class_id in zip(bboxes, class_ids):
+							# 	color = (255, 0 , 0)
+							# 	if class_id == 1:
+							# 		color = (0, 255, 0)
+							# 	elif class_id == 2:
+							# 		color = (0, 0, 255)
+							# 	cv2.rectangle(frame_ori, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 3)
 
 
 							detection_inf = [bboxes, class_ids, scores]

@@ -96,7 +96,7 @@ def get_valid_inside_and_fix_small_error(im_width, im_height, boxs_tlbr, percent
 def get_inside_regions_2(list_region, boxs_tlbr, infors_list=None):
     re_boxs = []
 
-    print("@" * 5, "boxs_tlbr (1) : ", boxs_tlbr)
+    print("@" *5, "boxs_tlbr (1) : ", boxs_tlbr)
     print("@"*5, "infors_list (1) : ", infors_list)
 
     if infors_list != None:
@@ -238,6 +238,7 @@ def tracking(list_detected_buffer, export_data_buffer, tracking_scales, video_in
 
                         t1 = time.time()
                         detection_inf = data[2]
+                        print(detection_inf)
 
                         if len(detection_inf) > 0:
                             bboxes, class_ids, scores = detection_inf
