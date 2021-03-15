@@ -15,6 +15,7 @@ from datetime import datetime
 import time
 from mask_utils import region_util
 from mask_utils import graphic_utils
+from mask_utils import grid_view_video as gv_video
 
 from mask_utils import global_variable_define as gd
 
@@ -176,9 +177,11 @@ def draw_caption(image, label, bbox, font_face, font_scale, bbox_color, text_col
 
 def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list,detect_step_list,
               tracking_scale_list, regionboxs_list, tracking_regions_list,view_width, view_height, grid_row, grid_col,
-              face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time):
+              face_mask_buffer, grid_image_queue, forward_message, backward_message, wait_stop, no_job_sleep_time):
 
     print("(0)--- Running Face Mask Threading")
+    grid_view = gv_video.Grid_View("Camera Viewer", view_width, view_height, grid_row, grid_col, 2, (255, 0, 0),
+                                   gd.camera_id_list, (0, 255, 0), direct_show=False)
 
     global videowrite_flag
     global save_grid_image
@@ -232,10 +235,10 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
     # -----
 
 
-    list_frame_image_buffer = [queue.Queue(50) for i in range(num_cam)]
-    list_detected_buffer = [queue.Queue(50) for i in range(num_cam)]
-    list_trackted_buffer = [queue.Queue(50) for i in range(num_cam)]
-    export_data_buffer = queue.Queue(50)  # unlimited
+    list_frame_image_buffer = [queue.Queue(20) for i in range(num_cam)]
+    list_detected_buffer = [queue.Queue(20) for i in range(num_cam)]
+    list_trackted_buffer = [queue.Queue(20) for i in range(num_cam)]
+    export_data_buffer = queue.Queue(20)  # unlimited
 
     gd.set_ref_export_data_buffer(export_data_buffer)
     # gd.set_backward_message(backward_message)
@@ -298,7 +301,7 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
                 event_queue3.put("stop")
                 event_queue4.put("stop")
 
-                print("[INFO]-- Face Mask threading is waitting to stop")
+                print("[INFO]-- Face Mask threading is waiting to stop")
                 wait_stop.wait()
                 print("(0)--- Stoped Face Mask threading")
                 return
@@ -403,21 +406,12 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
                             tracking_regions.draw_region(frame_ori, trackregion_color, bbox_thick, invert_scale, True, 1, 1)
 
                         show_logo(frame_ori, logo_info_list[cam_index])
-                        frame_ori = counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count, font_face,
-                                                 font_scale * 1.2, bbox_thick)
+                        # frame_ori = counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count, font_face,
+                        #                          font_scale * 1.2, bbox_thick)
 
-                        # for regionbox in regionboxs_list[cam_index]:
-                        #     regionbox.draw_region(frame_ori, boxregion_color, boxregion_thickness, 1/detection_scale_list[cam_index])
+                        grid_view.set_cell_image(frame_ori, cam_index)
 
-                        # for region in tracking_regions_list[cam_index]:
-                        #     region.draw_region(frame_ori, trackregion_color, trackregion_thickness, 1/tracking_scale_list[cam_index], True, 1, 0)
-
-                        # counted_show(frame_ori, frame_ori.shape[1], frame_ori.shape[0], list_count)
-
-                        # put data in to face_mask_buffer
-                        # frame_ori = cv2.resize(frame_ori, (640,480))
-                        face_mask_buffer[cam_index].put([ind, frame_ori, list_count])
-
+                        face_mask_buffer[cam_index].put([ind, list_count])
                         # ------------------ end draw infor -----------------------
 
                         t2 = time.time()
@@ -427,47 +421,16 @@ def face_mask(input_video_list, time_save_videos_folder_list, time_block_video, 
 
                         sum_time += (t2 - t1)
                         count += 1
-
-                        # -----
-                        # if videowrite_flag:
-                        #     out[cam_index].write(save_frame_ori)
-                        #     saved_frame_count_list[cam_index] += 1
-                        #     currentfile_saved_frame_count_list[cam_index] += 1
-                        #
-                        #     if (currentfile_saved_frame_count_list[cam_index] >= num_of_frame_in_block_list[cam_index]):
-                        #         out[cam_index].release()
-                        #         currentfile_saved_frame_count_list[cam_index] = 0
-                        #         saved_video_count_list[cam_index] += 1
-                        #
-                        #         out1, fps_video1 = VideoWriter_create(cam_index, time_save_videos_folder_list,
-                        #                                               video_infor_list,
-                        #                                               saved_frame_count_list[cam_index])
-                        #
-                        #         out[cam_index] = out1
-                        # -----
-
-
                     else:
-
                         # put data in to face_mask_buffer
-                        face_mask_buffer[cam_index].put([-1, frame_ori, list_count])
+                        face_mask_buffer[cam_index].put([-1, list_count])
                         list_closed_cam[cam_index] = True
-
-                        # -----
-                        # if videowrite_flag:
-                        #     if out[cam_index] is not None:
-                        #         out[cam_index].release()
-                        #         out[cam_index] = None
-
-                        # if (cam_index == 0):
-                        #     print(" Spend time 1: ", (t4-t3)/60, "min")
-                        # -----
-                    # put data into queue
-                    # face_mask_buffer[cam_index].put([1, frame_ori, list_count])
 
                 else:
                     time.sleep(no_job_sleep_time)
 
+        grid_image = grid_view.get_capture_image()
+        grid_image_queue.put(grid_image)
 
         if is_closed_all(list_closed_cam):
 
@@ -559,7 +522,7 @@ def parser_cam_infor(cam_infor_list):
            tracking_regions_list
 
 
-def face_mask_run(config_file, face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time):
+def face_mask_run(config_file, face_mask_buffer, grid_image_queue, forward_message, backward_message, wait_stop, no_job_sleep_time):
 
     global min_face_size_list
     yaml.warnings({'YAMLLoadWarning': False})
@@ -613,12 +576,12 @@ def face_mask_run(config_file, face_mask_buffer, forward_message, backward_messa
 
     face_mask(input_video_list, time_save_videos_folder_list, time_block_video, frame_drop_list, frame_step_list,
               tracking_scale_list, regionboxs_list, tracking_regions_list,view_width, view_height, grid_row, grid_col,
-              face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time)
+              face_mask_buffer, grid_image_queue, forward_message, backward_message, wait_stop, no_job_sleep_time)
 
     # t2 = time.time()
     # print("Spend time 2:", (t2 - t1) / 60, "min")
 
-def face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message, wait_stop, no_job_sleep_time):
-    t = threading.Thread(target=face_mask_run, args=[config_file, face_mask_buffer, forward_message, backward_message,
+def face_mask_by_threading(config_file, face_mask_buffer, grid_image_queue, forward_message, backward_message, wait_stop, no_job_sleep_time):
+    t = threading.Thread(target=face_mask_run, args=[config_file, face_mask_buffer, grid_image_queue, forward_message, backward_message,
                                                      wait_stop, no_job_sleep_time])
     t.start()

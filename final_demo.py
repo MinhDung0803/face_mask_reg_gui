@@ -304,7 +304,7 @@ class Thread(QtCore.QThread):
         global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
             set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute, trigger_pause
 
-        # # connect to sql database
+        # connect to sql database
         conn_display = sqlite3.connect('./database/final_data_base.db')
         c_display = conn_display.cursor()
 
@@ -314,8 +314,6 @@ class Thread(QtCore.QThread):
         # get information from config_file
         json_data = read_config_file()
         cam_infor_list = json_data["data"]
-
-        insert_name = json_data["data"][0]["name"]
 
         # parse all information of each camera
         input_video_list, cam_id_list, frame_drop_list, frame_step_list, tracking_scale_list, regionboxs_list, \
@@ -330,7 +328,7 @@ class Thread(QtCore.QThread):
             if max_fps < fps_video1:
                 max_fps = fps_video1
 
-        no_job_sleep_time = (1 / max_fps) / 10
+        no_job_sleep_time = (1 / max_fps) / 20
 
         # create face_mask buffer, forward_message and backward_message
         face_mask_buffer = [queue.Queue(50) for i in range(num_cam)]
@@ -345,9 +343,6 @@ class Thread(QtCore.QThread):
         # call face mask threading
         face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
                                                    wait_stop, no_job_sleep_time)
-
-        # # event count to update no face mask person and active alarm mode
-        # event_count = 0
 
         # prepare data for updating information on main view and alarm
         view_item = {
@@ -404,6 +399,23 @@ class Thread(QtCore.QThread):
             database_data[cam_index_enable]["camera_name"] = enable_data[cam_index_enable]["name"]
             database_data[cam_index_enable]["camera_id"] = enable_data[cam_index_enable]["id"]
 
+        # check update data
+        detail_result_main_old = []
+        working_status_data_main_old = []
+
+        # check latest working time for automation stop
+        automation_stop_time = []
+        for time_item in cam_infor_list:
+            time_infor = time_item["setting_time"]
+            if len(automation_stop_time) == 0:
+                automation_stop_time.append(int(time_infor[1][0:2]))
+                automation_stop_time.append(int(time_infor[1][3:5]))
+            elif int(time_infor[1][0:2]) > automation_stop_time[0]:
+                automation_stop_time[0] = int(time_infor[1][0:2])
+            elif int(time_infor[1][3:5]) > automation_stop_time[1]:
+                automation_stop_time[1] = int(time_infor[1][3:5])
+
+        # main loop
         while self._go:
             if os.path.exists(config_file):
                 if trigger_stop == 1:
@@ -449,40 +461,44 @@ class Thread(QtCore.QThread):
 
                             # update working status of camera for main view
                             view_data[position_of_camera_main]["status"] = "working"
-                            # update counting value of camera for main view
-                            view_data[position_of_camera_main]["person"] = person_count
-                            view_data[position_of_camera_main]["no_mask"] = no_mask_count
-                            view_data[position_of_camera_main]["mask"] = person_count - no_mask_count
 
                             # check data for num_in, num_no_mask, num_mask
                             current_data = database_data[cam_index]
 
                             # event
-                            if int(current_data["num_in"]) < person_count:
-                                # check no_mask value
-                                if int(current_data["num_no_mask"]) < no_mask_count:
+                            if view_data[position_of_camera_main]["person"] < person_count:
+                                # for view
+                                view_data[position_of_camera_main]["person"] = person_count
+
+                                if view_data[position_of_camera_main]["no_mask"] < no_mask_count:
+                                    # for view
+                                    view_data[position_of_camera_main]["no_mask"] = no_mask_count
+                                    # for database
                                     current_data["num_no_mask"] += int(current_data["num_no_mask"])
 
                                     # # active alarm here
                                     # # choosing alarm sound based on sound option
-                                    # sound_file = "./sound_alarm/police.mp3"
-                                    # if sound_main == "coi canh sat":
-                                    #     sound_file = "./sound_alarm/police.mp3"
-                                    # if sound_main == "tieng pip":
-                                    #     sound_file = "./sound_alarm/pip.mp3"
-                                    # if sound_main == "am canh bao":
-                                    #     sound_file = "./sound_alarm/canhbao.mp3"
-                                    # # play sound alarm
-                                    # if alarm_option_main == "am thanh":
-                                    #     play_alarm_audio_threading.play_audio_by_threading(sound_file)
-                                    # elif alarm_option_main == "den bao":
-                                    #     print("[INFO]-- Light")
-                                    # elif alarm_option_main == "ca hai":
-                                    #     print("[INFO]-- Sound and light")
-                                    #     play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                    sound_file = "./sound_alarm/police.mp3"
+                                    if sound_main == "coi canh sat":
+                                        sound_file = "./sound_alarm/police.mp3"
+                                    if sound_main == "tieng pip":
+                                        sound_file = "./sound_alarm/pip.mp3"
+                                    if sound_main == "am canh bao":
+                                        sound_file = "./sound_alarm/canhbao.mp3"
+                                    # play sound alarm
+                                    if alarm_option_main == "am thanh":
+                                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
+                                    elif alarm_option_main == "den bao":
+                                        print("[INFO]-- Light")
+                                    elif alarm_option_main == "ca hai":
+                                        print("[INFO]-- Sound and light")
+                                        play_alarm_audio_threading.play_audio_by_threading(sound_file)
 
-                            current_data["num_in"] += int(current_data["num_in"])
-                            current_data["num_mask"] = current_data["num_in"] - current_data["num_no_mask"]
+                                # for view
+                                view_data[position_of_camera_main]["mask"] = person_count - no_mask_count
+                                # for database
+                                current_data["num_in"] += int(current_data["num_in"])
+                                current_data["num_mask"] = current_data["num_in"] - current_data["num_no_mask"]
 
                             time_now = datetime.datetime.now()
 
@@ -544,65 +560,81 @@ class Thread(QtCore.QThread):
                     else:
                         time.sleep(no_job_sleep_time)
 
-                # call API to update data
+                # call API to check latest time for updating data
+                setting_server_url = "192.168.111.182:9000/api/cameras"
+                register_data_form = {
+                    "name": assign_new_camera_name,
+                    "object_appearance_id": assign_camera_id_data["object_id"],
+                }
+                # send request to API
+                api_path = f"http://{setting_server_url}"
+                headers = {"token": token}
+                response = requests.request("POST", api_path, json=register_data_form, headers=headers)
+                camera_id_data = response.json()
 
+                # # ----- core dumped PROBLEMS
                 # update main view - working status
                 working_status_data_main = []
                 for i in range(len(view_data)):
                     working_status_item = [view_data[i]["camera_name"], view_data[i]["status"]]
                     working_status_data_main.append(working_status_item)
-                self.g_tt_hoat_dong_table.setRowCount(0)
-                column_count = len(working_status_data_main[0])
-                row_count = len(working_status_data_main)
-                self.g_tt_hoat_dong_table.setRowCount(row_count)
-                for row in range(row_count):
-                    for column in range(column_count):
-                        item = str((list(working_status_data_main[row])[column]))
-                        self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
-                # update main view - detail result
-                detail_result_main = []
-                for i in range(len(view_data)):
-                    detail_result_main_item = [view_data[i]["camera_name"],
-                                               view_data[i]["person"],
-                                               view_data[i]["mask"],
-                                               view_data[i]["no_mask"]]
-                    detail_result_main.append(detail_result_main_item)
-                self.g_ket_qua_chi_tiet_table.setRowCount(0)
-                column_count = len(detail_result_main[0])
-                row_count = len(detail_result_main)
-                self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
-                for row in range(row_count):
-                    for column in range(column_count):
-                        item = str((list(detail_result_main[row])[column]))
-                        self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+                if working_status_data_main != working_status_data_main_old:
+                    self.g_tt_hoat_dong_table.setRowCount(0)
+                    column_count = len(working_status_data_main[0])
+                    row_count = len(working_status_data_main)
+                    self.g_tt_hoat_dong_table.setRowCount(row_count)
+                    for row in range(row_count):
+                        for column in range(column_count):
+                            item = str((list(working_status_data_main[row])[column]))
+                            self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+                #
+                # # update main view - detail result
+                # detail_result_main = []
+                # for i in range(len(view_data)):
+                #     detail_result_main_item = [view_data[i]["camera_name"],
+                #                                view_data[i]["person"],
+                #                                view_data[i]["mask"],
+                #                                view_data[i]["no_mask"]]
+                #     detail_result_main.append(detail_result_main_item)
+                #
+                #
+                # if detail_result_main != detail_result_main_old:
+                #     self.g_ket_qua_chi_tiet_table.setRowCount(0)
+                #     column_count = len(detail_result_main[0])
+                #     row_count = len(detail_result_main)
+                #     self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
+                #     for row in range(row_count):
+                #         for column in range(column_count):
+                #             item = str((list(detail_result_main[row])[column]))
+                #             self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+                # # ----- core dumped PROBLEMS
 
-                # update main view - genetal result
+                # update main view - general result
                 all_person = 0
                 all_no_mask = 0
                 all_mask = 0
-
+                #
                 for i in range(len(view_data)):
                     all_person = all_person+int(view_data[i]["person"])
                     all_no_mask = all_no_mask+int(view_data[i]["no_mask"])
                     all_mask = all_person-all_no_mask
-
+                #
                 # display them
-                # self.g_tong_vao.display(all_person)
-                # self.g_tong_kt.display(all_mask)
-                # self.g_tong_khong_kt(all_no_mask)
+                self.g_tong_vao.display(all_person)
+                self.g_tong_kt.display(all_mask)
+                self.g_tong_khong_kt.display(all_no_mask)
 
-                # # check setting time (TO) for STOP
-                # information2_time = datetime.datetime.now()
-                # # print("Time2:", information2_time)
-                # if set_working_time_flag and to_time_hour is not None and to_time_minute is not None:
-                #     if (int(information2_time.hour) >= int(to_time_hour)) \
-                #             and (int(information2_time.minute) >= int(to_time_minute)):
-                #         print("[INFO] All threads are stopped because of out of time (Setting time)")
-                #         forward_message.put("stop")
-                #         trigger_stop = 0
-                #         time.sleep(1)
-                #         self.stop_thread()
+                # check setting time (TO) for STOP
+                now_automation_stop_time = datetime.datetime.now()
+                if len(automation_stop_time) != 0 and automation_stop_time[0] != 0 and automation_stop_time[1] != 0:
+                    if (int(now_automation_stop_time.hour) >= automation_stop_time[0]) \
+                            and (int(now_automation_stop_time.minute) >= automation_stop_time[1]):
+                        print("[INFO] All threads are stopped because of out of time (Setting time)")
+                        forward_message.put("stop")
+                        trigger_stop = 0
+                        time.sleep(1)
+                        self.stop_thread()
             else:
                 app_warning_function.check_config_file()
                 time.sleep(0.5)
@@ -2710,6 +2742,7 @@ class Ui_MainWindow(object):
                 headers = {"token": token}
                 response = requests.request("DELETE", api_path, headers=headers)
                 delete_data_response = response.json()
+                print("delete_data_response", delete_data_response)
                 if delete_data_response["status"] == 200:
                     data_delete_parse.pop(position_of_camera_delete)
                     data_delete["data"] = data_delete_parse
@@ -2723,6 +2756,8 @@ class Ui_MainWindow(object):
                     with open(cam_config_delete, "w") as outfile_delete:
                         json.dump(data_delete, outfile_delete)
                     outfile_delete.close()
+                else:
+                    app_warning_function.camera_delete_failed()
                 # call for update combobox and camera working status
                 close_window()
                 self.update_combobox()
