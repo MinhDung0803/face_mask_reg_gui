@@ -167,7 +167,7 @@ def print_query_check():
     # rows = []
     # date = '04012019'
     # date = '05022021'
-    camera_name_input = 'A'
+    camera_name_input = 'tang1'
     year_input = 2020
     month_input = 12
     #query = f"SELECT * FROM DATA WHERE Date = {date}"

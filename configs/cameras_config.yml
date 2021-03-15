@@ -12,7 +12,7 @@ output:
 view_window:
   width: 1920
   height: 1080
-  grid_row: 1
-  grid_col: 1
+  grid_row: 2
+  grid_col: 2
 
 

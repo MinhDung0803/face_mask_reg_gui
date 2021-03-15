@@ -343,28 +343,28 @@ import json
 # print("list data: ", list_data)
 
 
-import cv2
-old_password = "dungpm@greenglobal.vn"
-# password_threading.password_by_threading()
-cap = cv2.VideoCapture(0)
-# ret, frame = cap.read()
-while True:
-    ret, frame = cap.read()
-    frame = cv2.resize(frame, (480, 360))
-    if ret:
-        cv2.imshow("show", frame)
-        key = cv2.waitKey(1)
-        if key == ord("q"):
-            break
-cap.release()
-cv2.destroyAllWindows()
-
-a = [
-    [[424, 90, 517, 201], [1292, 597, 1534, 918], [147, 207, 278, 364], [634, 22, 733, 148], [753, 302, 933, 520], [1691, 488, 1905, 718]],
-    [0.7914899, 0.7924527, 0.83863705, 0.8657681, 0.86999285, 0.88042307],
-    [[291, 92, 596, 346], [598, 14, 814, 491]],
-    [0.73263156, 0.8111926]
-]
+# import cv2
+# old_password = "dungpm@greenglobal.vn"
+# # password_threading.password_by_threading()
+# cap = cv2.VideoCapture(0)
+# # ret, frame = cap.read()
+# while True:
+#     ret, frame = cap.read()
+#     frame = cv2.resize(frame, (480, 360))
+#     if ret:
+#         cv2.imshow("show", frame)
+#         key = cv2.waitKey(1)
+#         if key == ord("q"):
+#             break
+# cap.release()
+# cv2.destroyAllWindows()
+#
+# a = [
+#     [[424, 90, 517, 201], [1292, 597, 1534, 918], [147, 207, 278, 364], [634, 22, 733, 148], [753, 302, 933, 520], [1691, 488, 1905, 718]],
+#     [0.7914899, 0.7924527, 0.83863705, 0.8657681, 0.86999285, 0.88042307],
+#     [[291, 92, 596, 346], [598, 14, 814, 491]],
+#     [0.73263156, 0.8111926]
+# ]
 
 
 # from PyQt5.QtGui import QApplication, QMainWindow, QPushButton, \
@@ -676,3 +676,199 @@ import requests
 
 import requests
 
+
+# import sqlite3
+# from mask_utils import app_warning_function
+#
+# # connect to sql database
+# conn = sqlite3.connect('./database/final_data_base.db')
+# c = conn.cursor()
+# return_data = []
+# camera_name_input = "A"
+# from_month = 5
+# to_month = 5
+#
+# from_day = 1
+# to_day = 5
+#
+# # get camera_id of camera_name_input
+# query_id = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+#            f"day BETWEEN {from_day} AND {to_day} AND " \
+#            f"month BETWEEN {from_month} AND {to_month}"
+# c.execute(query_id)
+# # id_data = c.fetchall()
+# # if len(c.fetchall()) > 0:
+# #     print(c.fetchall())
+# id_data = c.fetchall()
+#
+# if len(id_data) == 0:
+#     app_warning_function.query_camera_id_warning()
+# else:
+#
+#     # camera_id = id_data[0][0]
+#     camera_id = id_data
+#
+# data = []
+# # print(len(camera_id))
+# # print(camera_id)
+#
+# for i in range(len(camera_id)):
+#     item = str(camera_id[i])
+#     item = item.replace("(", "")
+#     item = item.replace(")", "")
+#     data.append(item)
+
+# print("final data: ", data)
+
+
+
+import datetime
+import sqlite3
+# call latest time
+token = "d41d8cd98f00b204e9800998ecf8427e"
+setting_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
+check_latest_time_form = {
+    "object_id": 4,
+}
+# send request to API
+api_path = f"http://{setting_server_url}"
+headers = {"token": token}
+response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
+check_latest_time_data = response.json()
+print(check_latest_time_data)
+
+# connect to sql database
+conn_display = sqlite3.connect('./database/final_data_base.db')
+c_display = conn_display.cursor()
+
+
+time_query = datetime.datetime.now()
+for item in check_latest_time_data["data"]:
+
+    camera_id = item["camera_id"]
+
+    query_minute = item["minutes"]
+    query_hour = item["hours"]
+    query_day = item["date"]
+    query_month = item["month"]
+    query_year = item["year"]
+
+    query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+            f"minute BETWEEN {query_minute} AND {time_query.minute} AND " \
+            f"hour BETWEEN {query_hour} AND {time_query.hour} AND " \
+            f"day BETWEEN {query_day} AND {time_query.day} AND " \
+            f"month BETWEEN {query_month} AND {time_query.month} AND " \
+            f"year BETWEEN {query_year} AND {time_query.year}"
+
+    c_display.execute(query_test)
+    sending_data = []
+
+    if len(c_display.fetchall()) > 0:
+        updated_data = c_display.fetchall()
+        print("query_data: ", updated_data)
+        for i in range(len(updated_data)):
+            item = str(updated_data[i])
+            item = item.replace("(", "")
+            item = item.replace(")", "")
+            sending_data.append(item)
+
+    print("sending data: ", len(sending_data))
+
+    if len(sending_data) > 0:
+
+        insert_data = {
+            "camera_id": camera_id,
+            "data": sending_data
+        }
+
+        data_form = {
+            "object_id": 4,
+            "data": [insert_data]
+        }
+
+        token = "d41d8cd98f00b204e9800998ecf8427e"
+        setting_server_url = "192.168.111.182:9000/api/objects/sync"
+        api_path = f"http://{setting_server_url}"
+        headers = {"token": token}
+        response = requests.request("POST", api_path, json=data_form, headers=headers)
+        insert_data = response.json()
+        print(insert_data)
+
+
+
+
+
+
+# update data
+# tang1 - 4
+# insert_data = {
+#     "camera_id": 4,
+#     "data": [
+#         "5, 3, 2, 1, 4, 1, 1, 2020",
+#         "6, 3, 3, 2, 4, 1, 1, 2020",
+#         "2, 1, 1, 3, 4, 1, 1, 2020"
+#     ]
+# }
+# data_form = {
+#     "object_id": 4,
+#     "data": [insert_data]
+# }
+
+# # tang2 - 5
+# insert_data = {
+#     "camera_id": 5,
+#     "data": [
+#         "5, 3, 2, 1, 3, 1, 1, 2020",
+#         "6, 3, 3, 2, 3, 1, 1, 2020",
+#         "2, 1, 1, 3, 3, 1, 1, 2020"
+#     ]
+# }
+# data_form = {
+#     "object_id": 4,
+#     "data": [insert_data]
+# }
+#
+# # tang3 - 5
+# insert_data = {
+#     "camera_id": 6,
+#     "data": [
+#         "5, 3, 2, 1, 2, 1, 1, 2020",
+#         "6, 3, 3, 2, 2, 1, 1, 2020",
+#         "2, 1, 1, 3, 2, 1, 1, 2020"
+#     ]
+# }
+# data_form = {
+#     "object_id": 4,
+#     "data": [insert_data]
+# }
+#
+# token = "d41d8cd98f00b204e9800998ecf8427e"
+# setting_server_url = "192.168.111.182:9000/api/objects/sync"
+# api_path = f"http://{setting_server_url}"
+# headers = {"token": token}
+# response = requests.request("POST", api_path, json=data_form, headers=headers)
+# insert_data = response.json()
+# print(insert_data)
+
+# lst = [i for i in range(1, 2039, 1)]
+# print(lst)
+# num = 500
+#
+# div_lay_du = len(lst) % num
+# div_lay_nguyen = len(lst) // num
+# print(div_lay_nguyen)
+# print(div_lay_du)
+
+# data_test = []
+# for i in range(div_lay_nguyen+1):
+#     if i == 0:
+#         item_data = lst[0:num]
+#     elif 0 < i < div_lay_nguyen+1:
+#         item_data = lst[num*i:num*i+num]
+#     elif i == div_lay_nguyen+1:
+#         item_data = lst[num*i:num*i+div_lay_du]
+#     print("item_data: ", item_data)
+#     print("-"*100)
+#     data_test.append(item_data)
+#
+# print("final data: ",data_test)
