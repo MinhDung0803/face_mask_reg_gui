@@ -3,19 +3,19 @@ import sqlite3
 import time
 import os
 import cv2
-import pandas as pd
 import threading
 import queue
 import json
 import yaml
 import datetime
 import requests
-
 import face_mask_threading
 from mask_utils import global_variable_define as gd
 import play_alarm_audio_threading
 from mask_utils import app_warning_function
-import report_statistics_tab
+from mask_utils import report_statistics_tab
+from mask_utils import supervision_tab
+from mask_utils import cameras_management_tab
 import update_data_threading
 
 import warnings
@@ -23,13 +23,16 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # variables
-name = None
 height = 421
 width = 771
 w_width = 1080
 w_height = 740
 trigger_stop = 0
 trigger_pause = 0
+
+# time circle to update data to Report Server
+time_circel_update_data = 300 # seconds
+check_time_1 = 0
 
 draw_region_points = []
 draw_counting_points = []
@@ -42,8 +45,6 @@ draw_count_flag_new = False
 
 draw_region_flag_old = False
 draw_count_flag_old = False
-
-set_working_time_flag = False
 
 setting_object_id = None
 
@@ -60,14 +61,6 @@ pass_height = 150
 
 extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
-
-# from
-from_time_hour = None
-from_time_minute = None
-
-# to
-to_time_hour = None
-to_time_minute = None
 
 # config_file
 # ----- KEY
@@ -95,26 +88,6 @@ def read_config_file():
     json_file.close()
     # data = json_data["data"]
     return json_data
-
-
-def create_default_region(w_in, h_in, extra_pixels_in):
-    result = [0 + extra_pixels_in, 0 + extra_pixels_in, w_in - extra_pixels_in, 0 + extra_pixels_in,
-              w_in - extra_pixels_in,
-              h_in - extra_pixels_in, 0 + extra_pixels_in, h_in - extra_pixels_in]
-    return result
-
-
-def create_default_counting_line(w_in, h_in, extra_pixels_in):
-    counting_line = [0 + extra_pixels_in, int(h_in / 2), w_in - extra_pixels_in, int(h_in / 2)]
-    direction_point = [int(w_in / 2), int(h_in / 2) + 50]
-    result = [
-        {
-            "id": "Counting-1",
-            "points": counting_line,
-            "direction_point": direction_point
-        }
-    ]
-    return result
 
 
 def close_window():
@@ -261,26 +234,6 @@ def save(settings):
             settings.endGroup()
 
 
-def inset_data_into_database(data_in, time_minute, time_hour, time_day, time_month, time_year):
-    # # connect to sql database
-    conn_display = sqlite3.connect('./database/final_data_base.db')
-    c_display = conn_display.cursor()
-
-    data_form_add = pd.DataFrame.from_dict([data_in])
-    data_form_add.to_sql('DATA', conn_display, if_exists='append', index=False)
-    print("[INFO]-- Inserted data into Database")
-    conn_display.commit()
-    data_in["num_in"] = 0
-    data_in["num_mask"] = 0
-    data_in["num_no_mask"] = 0
-    data_in["minute"] = time_minute
-    data_in["hour"] = time_hour
-    data_in["day"] = time_day
-    data_in["month"] = time_month
-    data_in["year"] = time_year
-    return data_in
-
-
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
@@ -296,8 +249,7 @@ class Thread(QtCore.QThread):
         self.g_tt_hoat_dong_table = g_tt_hoat_dong_table
 
     def run(self):
-        global count, height, width, config_file, trigger_stop, light_alarm, sound_alarm, both_alarm, name, \
-            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute, trigger_pause, token
+        global height, width, config_file, trigger_stop, trigger_pause, token, time_circel_update_data, check_time_1
 
         # connect to sql database
         conn_display = sqlite3.connect('./database/final_data_base.db')
@@ -341,7 +293,8 @@ class Thread(QtCore.QThread):
         wait_stop = threading.Barrier(5)
 
         # call face mask threading
-        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer,grid_image_queue, forward_message, backward_message,
+        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, grid_image_queue, forward_message,
+                                                   backward_message,
                                                    wait_stop, no_job_sleep_time)
         # call update data to Report Server
         update_data_threading.update_data_by_threading(update_data_queue, forward_message, backward_message, wait_stop,
@@ -419,61 +372,11 @@ class Thread(QtCore.QThread):
                 automation_stop_time[1] = int(time_infor[1][3:5])
 
         # update data to Report Server before run main loop
-        check_latest_time_form = {
-            "object_id": int(json_data["object_id"]),
-        }
-        # send request to API
-        check_time_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
-        api_path = f"http://{check_time_server_url}"
-        headers = {"token": token}
-        response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
-        check_latest_time_data = response.json()
-        print(check_latest_time_data)
-
-        for item in check_latest_time_data["data"]:
-            # prepare information
-            camera_id = item["camera_id"]
-            now = datetime.datetime.now()
-            data_lst = (str(item["year"]),
-                        str(item["month"]).zfill(2),
-                        str(item["date"]).zfill(2),
-                        str(item["hours"]).zfill(2),
-                        str(item["minutes"]).zfill(2))
-
-            to_time = now.strftime("%Y%m%d%H%M")
-            from_time = "".join(data_lst)
-
-            query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
-                         f"camera_id = '{camera_id}' AND " \
-                         f"(substr(year,1,4)||substr(substr('00'||month,-2),1,2)||substr(substr('00'||day,-2),1,2)||" \
-                         f"substr(substr('00'||hour,-2),1,2)||substr(substr('00'||minute,-2),1,2)) " \
-                         f"BETWEEN '{from_time}' AND '{to_time}'"
-
-            # query data
-            c_display.execute(query_test)
-            updated_data = c_display.fetchall()
-
-            sending_data = []
-            if len(updated_data) > 0:
-                for i in range(len(updated_data)):
-                    item = str(updated_data[i])
-                    item = item.replace("(", "")
-                    item = item.replace(")", "")
-                    sending_data.append(item)
-                if len(sending_data) > 0:
-                    insert_data = {
-                        "camera_id": camera_id,
-                        "data": sending_data
-                    }
-                    data_form = {
-                        "object_id": int(json_data["object_id"]),
-                        "data": [insert_data]
-                    }
-                    # put into update data queue
-                    update_data_queue.put(data_form)
+        supervision_tab.update_data_to_report_server(json_data, token, update_data_queue)
 
         # main loop
         while self._go:
+            check_time_1 = datetime.datetime.now()
             if os.path.exists(config_file):
                 if trigger_stop == 1:
                     forward_message.put("stop")
@@ -508,8 +411,8 @@ class Thread(QtCore.QThread):
                         light_main = search_camera_infor_main["light"]
 
                         # check setting time value
-                        check_setting_time = int(setting_time_main[0][0:2])+int(setting_time_main[0][3:5])+\
-                                             int(setting_time_main[1][0:2])+int(setting_time_main[1][3:5])
+                        check_setting_time = int(setting_time_main[0][0:2]) + int(setting_time_main[0][3:5]) + \
+                                             int(setting_time_main[1][0:2]) + int(setting_time_main[1][3:5])
 
                         if ind != -1:
                             # get number of person with mask
@@ -557,7 +460,7 @@ class Thread(QtCore.QThread):
                                 current_data["num_in"] += int(current_data["num_in"])
                                 current_data["num_mask"] = current_data["num_in"] - current_data["num_no_mask"]
 
-                            time_now = datetime.datetime.now()
+                            time_now = datetime.datetime.now() # check time to insert data into local database
 
                             if time_now.minute == 1:
                                 if check_setting_time != 0:
@@ -565,47 +468,41 @@ class Thread(QtCore.QThread):
                                             and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
                                             and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
                                             and (int(time_now.minute) < int(setting_time_main[1][3:5])):
-                                        database_data[cam_index] = inset_data_into_database(current_data,
-                                                                                            time_now.hour,
-                                                                                            time_now.day,
-                                                                                            time_now.month,
-                                                                                            time_now.year)
+                                        database_data[cam_index] = supervision_tab.inset_data_into_database(
+                                            current_data,
+                                            time_now.hour,
+                                            time_now.day,
+                                            time_now.month,
+                                            time_now.year)
                                 else:
-                                    database_data[cam_index] = inset_data_into_database(current_data,
-                                                                                        time_now.minute,
-                                                                                        time_now.hour,
-                                                                                        time_now.day,
-                                                                                        time_now.month,
-                                                                                        time_now.year)
+                                    database_data[cam_index] = supervision_tab.inset_data_into_database(
+                                        current_data,
+                                        time_now.minute,
+                                        time_now.hour,
+                                        time_now.day,
+                                        time_now.month,
+                                        time_now.year)
                             elif time_now.minute > current_data["minute"]:
                                 if check_setting_time != 0:
                                     if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
                                             and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
                                             and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
                                             and (int(time_now.minute) < int(setting_time_main[1][3:5])):
-                                        database_data[cam_index] = inset_data_into_database(current_data,
-                                                                                            time_now.minute,
-                                                                                            time_now.hour,
-                                                                                            time_now.day,
-                                                                                            time_now.month,
-                                                                                            time_now.year)
+                                        database_data[cam_index] = supervision_tab.inset_data_into_database(
+                                            current_data,
+                                            time_now.minute,
+                                            time_now.hour,
+                                            time_now.day,
+                                            time_now.month,
+                                            time_now.year)
                                 else:
-                                    database_data[cam_index] = inset_data_into_database(current_data,
-                                                                                        time_now.minute,
-                                                                                        time_now.hour,
-                                                                                        time_now.day,
-                                                                                        time_now.month,
-                                                                                        time_now.year)
-
-                            # # display on APP
-                            # result_frame = cv2.resize(frame_ori, (width, height))
-                            # rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
-                            # h_result_frame, w_result_frame, ch = rgbImage.shape
-                            # bytesPerLine = ch * w_result_frame
-                            # convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
-                            #                                  bytesPerLine, QtGui.QImage.Format_RGB888)
-                            # p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
-                            # self.changePixmap.emit(p)
+                                    database_data[cam_index] = supervision_tab.inset_data_into_database(
+                                        current_data,
+                                        time_now.minute,
+                                        time_now.hour,
+                                        time_now.day,
+                                        time_now.month,
+                                        time_now.year)
                         else:
                             # update working status of camera for main view
                             view_data[position_of_camera_main]["status"] = "interrupted"
@@ -613,7 +510,6 @@ class Thread(QtCore.QThread):
                         time.sleep(no_job_sleep_time)
 
                 # display on APP
-
                 if not grid_image_queue.empty():
                     grid_image = grid_image_queue.get()
                     result_frame = cv2.resize(grid_image, (width, height))
@@ -625,18 +521,19 @@ class Thread(QtCore.QThread):
                     p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
                     self.changePixmap.emit(p)
 
+                # call API to update data to Report Server
+                check_time_2 = datetime.datetime.now()
+                if check_time_1 == 0:
+                    check_time_1 = check_time_2
 
-                # call API to check latest time for updating data
-                # setting_server_url = "192.168.111.182:9000/api/cameras"
-                # check_latest_time_form = {
-                #     "name": "",
-                #     "object_appearance_id": json_data["object_id"],
-                # }
-                # # send request to API
-                # api_path = f"http://{setting_server_url}"
-                # headers = {"token": token}
-                # response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
-                # check_latest_time_data = response.json()
+                time_delta = (check_time_2 - check_time_1)
+                total_seconds = time_delta.total_seconds()
+
+                if total_seconds >= time_circel_update_data:
+                    # update data to Report Server after time circle
+                    supervision_tab.update_data_to_report_server()
+                    # update check time
+                    check_time_1 = check_time_2
 
                 # # ----- core dumped PROBLEMS
                 # update main view - working status
@@ -682,9 +579,9 @@ class Thread(QtCore.QThread):
                 all_mask = 0
                 #
                 for i in range(len(view_data)):
-                    all_person = all_person+int(view_data[i]["person"])
-                    all_no_mask = all_no_mask+int(view_data[i]["no_mask"])
-                    all_mask = all_person-all_no_mask
+                    all_person = all_person + int(view_data[i]["person"])
+                    all_no_mask = all_no_mask + int(view_data[i]["no_mask"])
+                    all_mask = all_person - all_no_mask
                 #
                 # display them
                 self.g_tong_vao.display(all_person)
@@ -711,12 +608,7 @@ class Thread(QtCore.QThread):
             draw_counting_points, \
             draw_region_points, \
             draw_counting_no_scale, \
-            draw_region_points_no_scale, \
-            set_working_time_flag, \
-            from_time_hour, \
-            from_time_minute, \
-            to_time_hour, \
-            to_time_minute
+            draw_region_points_no_scale
 
         self._go = False
         draw_region_flag = False
@@ -725,11 +617,6 @@ class Thread(QtCore.QThread):
         draw_region_points = []
         draw_region_points_no_scale = []
         draw_counting_no_scale = []
-        set_working_time_flag = True
-        from_time_hour = None
-        from_time_minute = None
-        to_time_hour = None
-        to_time_minute = None
 
 
 # ------------------------------------------------------  MAIN APPLICATION
@@ -2555,7 +2442,7 @@ class Ui_MainWindow(object):
                 draw_region_flag_new = False
                 draw_region_points = []
             else:
-                new_camera_tracking_region = create_default_region(w, h, extra_pixels)
+                new_camera_tracking_region = cameras_management_tab.create_default_region(w, h, extra_pixels)
 
             # check draw_count_flag_new to get for if drawn or not
             new_camera_counting_line = []
@@ -2579,7 +2466,7 @@ class Ui_MainWindow(object):
                     draw_count_flag_new = False
                     draw_counting_points = []
             else:
-                new_camera_counting_line = create_default_counting_line(w, h, extra_pixels)
+                new_camera_counting_line = cameras_management_tab.create_default_counting_line(w, h, extra_pixels)
 
             # find camera in data to update more information
             # load config file for search camera name and edit
@@ -2601,7 +2488,8 @@ class Ui_MainWindow(object):
             add_camera_search_camera_infor["url"] = new_camera_address
             add_camera_search_camera_infor["ROIs"][0]["box"] = [0, 0, w, h]
             add_camera_search_camera_infor["tracking_regions"][0]["points"] = new_camera_tracking_region
-            add_camera_search_camera_infor["tracking_regions"][0]["trap_lines"]["unlimited_counts"] = new_camera_counting_line
+            add_camera_search_camera_infor["tracking_regions"][0]["trap_lines"][
+                "unlimited_counts"] = new_camera_counting_line
 
             # update data
             add_camera_infor_new["data"][add_position_of_camera] = add_camera_search_camera_infor
@@ -2717,7 +2605,7 @@ class Ui_MainWindow(object):
                 self.q_chinh_time_tu.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][0][0:2]),
                                                           int(search_camera_infor["setting_time"][0][3:5])))
                 self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
-                                                          int(search_camera_infor["setting_time"][1][3:5])))
+                                                           int(search_camera_infor["setting_time"][1][3:5])))
 
     def camera_management_rename(self):
         global config_file
@@ -2891,8 +2779,8 @@ class Ui_MainWindow(object):
                     app_warning_function.check_new_counting_lines()
                     draw_counting_points = []
 
-
-                if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"]:
+                if edit_camera_counting_line != data_edit_parse["tracking_regions"][0]["trap_lines"][
+                    "unlimited_counts"]:
                     data_edit_parse["tracking_regions"][0]["trap_lines"]["unlimited_counts"] = edit_camera_counting_line
 
             # for alarm option -  check alarm_option
@@ -2951,7 +2839,6 @@ class Ui_MainWindow(object):
     # FOR MAIN VIEW TAB
     def video(self):
         global config_file, count, width, height
-        self.g_tong_khong_kt.display(count)
         if not os.path.exists(config_file):
             app_warning_function.camera_config_flie()
         else:
@@ -3001,10 +2888,12 @@ class Ui_MainWindow(object):
                     "no_mask": 0,
                 }
 
-                detail_counting_results_data = [detail_counting_results_item.copy() for i in range(len(detail_counting_results_camera_data))]
+                detail_counting_results_data = [detail_counting_results_item.copy() for i in
+                                                range(len(detail_counting_results_camera_data))]
 
                 for index in range(len(detail_counting_results_camera_data)):
-                    detail_counting_results_data[index]["camera_name"] = detail_counting_results_camera_data[index]["name"]
+                    detail_counting_results_data[index]["camera_name"] = detail_counting_results_camera_data[index][
+                        "name"]
 
                 self.g_ket_qua_chi_tiet_table.setRowCount(0)
                 column_count = len(detail_counting_results_data[0])
@@ -3317,6 +3206,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         save(self.settings)
         super().closeEvent(event)
+
+
 # ------------------------------------------------------  MAIN APPLICATION
 
 
@@ -3409,6 +3300,8 @@ class MainWindow2(QtWidgets.QMainWindow, Ui_Password2):
 
     def closeEvent(self, event):
         super().closeEvent(event)
+
+
 # ------------------------------------------------------  PASSWORD APPLICATION
 
 
