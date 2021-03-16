@@ -724,6 +724,8 @@ import requests
 
 import datetime
 import sqlite3
+
+
 # call latest time
 token = "d41d8cd98f00b204e9800998ecf8427e"
 setting_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
@@ -736,64 +738,113 @@ headers = {"token": token}
 response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
 check_latest_time_data = response.json()
 print(check_latest_time_data)
+#
+# # connect to sql database
+# conn = sqlite3.connect('./database/final_data_base.db')
+# c = conn.cursor()
+#
+# time_query_minute = 5
+# time_query_hour = 5
+# time_query_day = 3
+# time_query_month = 2
+# time_query_year = 2020
+#
+#
+# for item in check_latest_time_data["data"]:
+#
+#     camera_id = item["camera_id"]
+#
+#     query_minute = item["minutes"]
+#     query_hour = item["hours"]
+#     query_day = item["date"]
+#     query_month = item["month"]
+#     query_year = item["year"]
+#
+#     # print(query_minute,query_hour,query_day,query_month,query_year)
+#     # print(time_query.minute,time_query.hour,time_query.day,time_query.month,time_query.year)
+#
+#     # query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+#     #              f"camera_id = '{camera_id}' AND " \
+#     #              f"minute BETWEEN {query_minute} AND {time_query.minute} OR " \
+#     #              f"hour BETWEEN {query_hour} AND {time_query.hour} OR " \
+#     #              f"day BETWEEN {query_day} AND {time_query.day} OR " \
+#     #              f"month BETWEEN {query_month} AND {time_query.month} OR " \
+#     #              f"year BETWEEN {query_year} AND {time_query.year}"
+#
+#     query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+#                  f"camera_id = '{camera_id}' AND " \
+#                  f"hour BETWEEN {query_hour} AND {time_query_hour} AND " \
+#                  f"day BETWEEN {query_day} AND {time_query_day} AND " \
+#                  f"month BETWEEN {query_month} AND {time_query_month} AND " \
+#                  f"year BETWEEN {query_year} AND {time_query_year}"
+#
+#     # camera_name_input = 'tang1'
+#     # query = f"SELECT * FROM DATA WHERE camera_name = '{camera_name_input}'"
+#
+#     c.execute(query_test)
+#     sending_data = []
+#
+#     updated_data = c.fetchall()
+#     if len(updated_data) > 0:
+#         print("query_data: ", updated_data)
+#         for i in range(len(updated_data)):
+#             item = str(updated_data[i])
+#             item = item.replace("(", "")
+#             item = item.replace(")", "")
+#             sending_data.append(item)
+#
+#         print("sending data: ", len(sending_data))
+#
+#         if len(sending_data) > 0:
+#
+#             insert_data = {
+#                 "camera_id": camera_id,
+#                 "data": sending_data
+#             }
+#
+#             data_form = {
+#                 "object_id": 4,
+#                 "data": [insert_data]
+#             }
+#
+#             token = "d41d8cd98f00b204e9800998ecf8427e"
+#             setting_server_url = "192.168.111.182:9000/api/objects/sync"
+#             api_path = f"http://{setting_server_url}"
+#             headers = {"token": token}
+#             response = requests.request("POST", api_path, json=data_form, headers=headers)
+#             insert_data = response.json()
+#             print(insert_data)
 
-# connect to sql database
-conn_display = sqlite3.connect('./database/final_data_base.db')
-c_display = conn_display.cursor()
+# import sqlite3
+# # connect to sql database
+# conn = sqlite3.connect('./database/final_data_base.db')
+# c = conn.cursor()
+#
+# camera_id = 4
+#
+# query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+#              f"camera_id = '{camera_id}' AND " \
+#              f"(substr(year,1,4)||substr(substr('00'||month,-2),1,2)||substr(substr('00'||day,-2),1,2)||" \
+#              f"substr(substr('00'||hour,-2),1,2)||substr(substr('00'||minute,-2),1,2)) " \
+#              f"BETWEEN '202001010502' AND '202103160835'"
+#
+# # query_test = "select substr('00'||3,-2);"
+#
+# c.execute(query_test)
+# updated_data = c.fetchall()
+# print(len(updated_data))
+# print(updated_data)
 
 
-time_query = datetime.datetime.now()
-for item in check_latest_time_data["data"]:
-
-    camera_id = item["camera_id"]
-
-    query_minute = item["minutes"]
-    query_hour = item["hours"]
-    query_day = item["date"]
-    query_month = item["month"]
-    query_year = item["year"]
-
-    query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
-            f"minute BETWEEN {query_minute} AND {time_query.minute} AND " \
-            f"hour BETWEEN {query_hour} AND {time_query.hour} AND " \
-            f"day BETWEEN {query_day} AND {time_query.day} AND " \
-            f"month BETWEEN {query_month} AND {time_query.month} AND " \
-            f"year BETWEEN {query_year} AND {time_query.year}"
-
-    c_display.execute(query_test)
-    sending_data = []
-
-    if len(c_display.fetchall()) > 0:
-        updated_data = c_display.fetchall()
-        print("query_data: ", updated_data)
-        for i in range(len(updated_data)):
-            item = str(updated_data[i])
-            item = item.replace("(", "")
-            item = item.replace(")", "")
-            sending_data.append(item)
-
-    print("sending data: ", len(sending_data))
-
-    if len(sending_data) > 0:
-
-        insert_data = {
-            "camera_id": camera_id,
-            "data": sending_data
-        }
-
-        data_form = {
-            "object_id": 4,
-            "data": [insert_data]
-        }
-
-        token = "d41d8cd98f00b204e9800998ecf8427e"
-        setting_server_url = "192.168.111.182:9000/api/objects/sync"
-        api_path = f"http://{setting_server_url}"
-        headers = {"token": token}
-        response = requests.request("POST", api_path, json=data_form, headers=headers)
-        insert_data = response.json()
-        print(insert_data)
-
+# import datetime
+# now = datetime.datetime.now()
+# to_time = now.strftime("%Y%m%d%H%M")
+# print("to_time: ", to_time)
+#
+# data = {'minutes': 5, 'hours': 5, 'date': 2, 'month': 1, 'year': 2020}
+# data_lst = (str(data["year"]), str(data["month"]).zfill(2), str(data["date"]).zfill(2), str(data["hours"]).zfill(2), str(data["minutes"]).zfill(2))
+# from_time = "".join(data_lst)
+# print("from_time: ", from_time)
 
 
 
