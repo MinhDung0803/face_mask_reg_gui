@@ -16,6 +16,7 @@ from mask_utils import global_variable_define as gd
 import play_alarm_audio_threading
 from mask_utils import app_warning_function
 import report_statistics_tab
+import update_data_threading
 
 import warnings
 
@@ -23,16 +24,10 @@ warnings.filterwarnings("ignore")
 
 # variables
 name = None
-camera_name_input_1 = ""
-camera_name_input_2 = ""
-count = 0
 height = 421
 width = 771
 w_width = 1080
 w_height = 740
-light_alarm = 0
-sound_alarm = 0
-both_alarm = 1
 trigger_stop = 0
 trigger_pause = 0
 
@@ -301,8 +296,8 @@ class Thread(QtCore.QThread):
         self.g_tt_hoat_dong_table = g_tt_hoat_dong_table
 
     def run(self):
-        global count, height, width, config_file, trigger_stop, count, light_alarm, sound_alarm, both_alarm, name, \
-            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute, trigger_pause
+        global count, height, width, config_file, trigger_stop, light_alarm, sound_alarm, both_alarm, name, \
+            set_working_time_flag, from_time_hour, from_time_minute, to_time_hour, to_time_minute, trigger_pause, token
 
         # connect to sql database
         conn_display = sqlite3.connect('./database/final_data_base.db')
@@ -331,8 +326,13 @@ class Thread(QtCore.QThread):
         no_job_sleep_time = (1 / max_fps) / 20
 
         # create face_mask buffer, forward_message and backward_message
-        face_mask_buffer = [queue.Queue(50) for i in range(num_cam)]
+        face_mask_buffer = [queue.Queue(20) for i in range(num_cam)]
+        grid_image_queue = queue.Queue(20)
 
+        # create update_data_queue
+        update_data_queue = queue.Queue()
+
+        # control messages
         forward_message = queue.Queue()
         backward_message = queue.Queue()
 
@@ -341,8 +341,11 @@ class Thread(QtCore.QThread):
         wait_stop = threading.Barrier(5)
 
         # call face mask threading
-        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer, forward_message, backward_message,
+        face_mask_threading.face_mask_by_threading(config_file, face_mask_buffer,grid_image_queue, forward_message, backward_message,
                                                    wait_stop, no_job_sleep_time)
+        # call update data to Report Server
+        update_data_threading.update_data_by_threading(update_data_queue, forward_message, backward_message, wait_stop,
+                                                       no_job_sleep_time)
 
         # prepare data for updating information on main view and alarm
         view_item = {
@@ -415,19 +418,74 @@ class Thread(QtCore.QThread):
             elif int(time_infor[1][3:5]) > automation_stop_time[1]:
                 automation_stop_time[1] = int(time_infor[1][3:5])
 
+        # update data to Report Server before run main loop
+        check_latest_time_form = {
+            "object_id": int(json_data["object_id"]),
+        }
+        # send request to API
+        check_time_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
+        api_path = f"http://{check_time_server_url}"
+        headers = {"token": token}
+        response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
+        check_latest_time_data = response.json()
+        print(check_latest_time_data)
+
+        for item in check_latest_time_data["data"]:
+            # prepare information
+            camera_id = item["camera_id"]
+            now = datetime.datetime.now()
+            data_lst = (str(item["year"]),
+                        str(item["month"]).zfill(2),
+                        str(item["date"]).zfill(2),
+                        str(item["hours"]).zfill(2),
+                        str(item["minutes"]).zfill(2))
+
+            to_time = now.strftime("%Y%m%d%H%M")
+            from_time = "".join(data_lst)
+
+            query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+                         f"camera_id = '{camera_id}' AND " \
+                         f"(substr(year,1,4)||substr(substr('00'||month,-2),1,2)||substr(substr('00'||day,-2),1,2)||" \
+                         f"substr(substr('00'||hour,-2),1,2)||substr(substr('00'||minute,-2),1,2)) " \
+                         f"BETWEEN '{from_time}' AND '{to_time}'"
+
+            # query data
+            c_display.execute(query_test)
+            updated_data = c_display.fetchall()
+
+            sending_data = []
+            if len(updated_data) > 0:
+                for i in range(len(updated_data)):
+                    item = str(updated_data[i])
+                    item = item.replace("(", "")
+                    item = item.replace(")", "")
+                    sending_data.append(item)
+                if len(sending_data) > 0:
+                    insert_data = {
+                        "camera_id": camera_id,
+                        "data": sending_data
+                    }
+                    data_form = {
+                        "object_id": int(json_data["object_id"]),
+                        "data": [insert_data]
+                    }
+                    # put into update data queue
+                    update_data_queue.put(data_form)
+
         # main loop
         while self._go:
             if os.path.exists(config_file):
                 if trigger_stop == 1:
                     forward_message.put("stop")
                     trigger_stop = 0
-                    time.sleep(1)
+                    # time.sleep(0.5)
                     self.stop_thread()
+                    time.sleep(0.5)
 
                 if trigger_pause == 1:
                     forward_message.put("pause/unpause")
                     trigger_pause = 0
-                    time.sleep(1)
+                    # time.sleep(1)
 
                 # get information form the queue
                 for cam_index in range(num_cam):
@@ -436,8 +494,7 @@ class Thread(QtCore.QThread):
                         data = face_mask_output_data.get()
 
                         ind = data[0]
-                        frame_ori = data[1]
-                        list_count = data[2]
+                        list_count = data[1]
 
                         # loading setting time and alarm option of camera
                         search_camera_infor_main = []
@@ -503,91 +560,100 @@ class Thread(QtCore.QThread):
                             time_now = datetime.datetime.now()
 
                             if time_now.minute == 1:
-                                if current_data["num_in"] != 0:
-                                    if check_setting_time != 0:
-                                        if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
-                                                and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
-                                                and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
-                                                and (int(time_now.minute) < int(setting_time_main[1][3:5])):
-                                            database_data[cam_index] = inset_data_into_database(
-                                                current_data,
-                                                time_now.hour,
-                                                time_now.day,
-                                                time_now.month,
-                                                time_now.year)
-                                    else:
+                                if check_setting_time != 0:
+                                    if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
+                                            and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
+                                            and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
+                                            and (int(time_now.minute) < int(setting_time_main[1][3:5])):
+                                        database_data[cam_index] = inset_data_into_database(current_data,
+                                                                                            time_now.hour,
+                                                                                            time_now.day,
+                                                                                            time_now.month,
+                                                                                            time_now.year)
+                                else:
+                                    database_data[cam_index] = inset_data_into_database(current_data,
+                                                                                        time_now.minute,
+                                                                                        time_now.hour,
+                                                                                        time_now.day,
+                                                                                        time_now.month,
+                                                                                        time_now.year)
+                            elif time_now.minute > current_data["minute"]:
+                                if check_setting_time != 0:
+                                    if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
+                                            and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
+                                            and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
+                                            and (int(time_now.minute) < int(setting_time_main[1][3:5])):
                                         database_data[cam_index] = inset_data_into_database(current_data,
                                                                                             time_now.minute,
                                                                                             time_now.hour,
                                                                                             time_now.day,
                                                                                             time_now.month,
                                                                                             time_now.year)
-                            elif time_now.minute > current_data["minute"]:
-                                if current_data["num_in"] != 0:
-                                    if check_setting_time != 0:
-                                        if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
-                                                and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
-                                                and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
-                                                and (int(time_now.minute) < int(setting_time_main[1][3:5])):
-                                            database_data[cam_index] = inset_data_into_database(
-                                                current_data,
-                                                time_now.minute,
-                                                time_now.hour,
-                                                time_now.day,
-                                                time_now.month,
-                                                time_now.year)
-                                    else:
-                                        database_data[cam_index] = inset_data_into_database(
-                                            current_data,
-                                            time_now.minute,
-                                            time_now.hour,
-                                            time_now.day,
-                                            time_now.month,
-                                            time_now.year)
+                                else:
+                                    database_data[cam_index] = inset_data_into_database(current_data,
+                                                                                        time_now.minute,
+                                                                                        time_now.hour,
+                                                                                        time_now.day,
+                                                                                        time_now.month,
+                                                                                        time_now.year)
 
-                            # display on APP
-                            result_frame = cv2.resize(frame_ori, (width, height))
-                            rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
-                            h_result_frame, w_result_frame, ch = rgbImage.shape
-                            bytesPerLine = ch * w_result_frame
-                            convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
-                                                             bytesPerLine, QtGui.QImage.Format_RGB888)
-                            p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
-                            self.changePixmap.emit(p)
+                            # # display on APP
+                            # result_frame = cv2.resize(frame_ori, (width, height))
+                            # rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+                            # h_result_frame, w_result_frame, ch = rgbImage.shape
+                            # bytesPerLine = ch * w_result_frame
+                            # convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
+                            #                                  bytesPerLine, QtGui.QImage.Format_RGB888)
+                            # p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
+                            # self.changePixmap.emit(p)
                         else:
                             # update working status of camera for main view
                             view_data[position_of_camera_main]["status"] = "interrupted"
                     else:
                         time.sleep(no_job_sleep_time)
 
+                # display on APP
+
+                if not grid_image_queue.empty():
+                    grid_image = grid_image_queue.get()
+                    result_frame = cv2.resize(grid_image, (width, height))
+                    rgbImage = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+                    h_result_frame, w_result_frame, ch = rgbImage.shape
+                    bytesPerLine = ch * w_result_frame
+                    convertToQtFormat = QtGui.QImage(rgbImage.data, w_result_frame, h_result_frame,
+                                                     bytesPerLine, QtGui.QImage.Format_RGB888)
+                    p = convertToQtFormat.scaled(width, height, QtCore.Qt.KeepAspectRatio)
+                    self.changePixmap.emit(p)
+
+
                 # call API to check latest time for updating data
-                setting_server_url = "192.168.111.182:9000/api/cameras"
-                register_data_form = {
-                    "name": assign_new_camera_name,
-                    "object_appearance_id": assign_camera_id_data["object_id"],
-                }
-                # send request to API
-                api_path = f"http://{setting_server_url}"
-                headers = {"token": token}
-                response = requests.request("POST", api_path, json=register_data_form, headers=headers)
-                camera_id_data = response.json()
+                # setting_server_url = "192.168.111.182:9000/api/cameras"
+                # check_latest_time_form = {
+                #     "name": "",
+                #     "object_appearance_id": json_data["object_id"],
+                # }
+                # # send request to API
+                # api_path = f"http://{setting_server_url}"
+                # headers = {"token": token}
+                # response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
+                # check_latest_time_data = response.json()
 
                 # # ----- core dumped PROBLEMS
                 # update main view - working status
-                working_status_data_main = []
-                for i in range(len(view_data)):
-                    working_status_item = [view_data[i]["camera_name"], view_data[i]["status"]]
-                    working_status_data_main.append(working_status_item)
-
-                if working_status_data_main != working_status_data_main_old:
-                    self.g_tt_hoat_dong_table.setRowCount(0)
-                    column_count = len(working_status_data_main[0])
-                    row_count = len(working_status_data_main)
-                    self.g_tt_hoat_dong_table.setRowCount(row_count)
-                    for row in range(row_count):
-                        for column in range(column_count):
-                            item = str((list(working_status_data_main[row])[column]))
-                            self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+                # working_status_data_main = []
+                # for i in range(len(view_data)):
+                #     working_status_item = [view_data[i]["camera_name"], view_data[i]["status"]]
+                #     working_status_data_main.append(working_status_item)
+                #
+                # if working_status_data_main != working_status_data_main_old:
+                #     self.g_tt_hoat_dong_table.setRowCount(0)
+                #     column_count = len(working_status_data_main[0])
+                #     row_count = len(working_status_data_main)
+                #     self.g_tt_hoat_dong_table.setRowCount(row_count)
+                #     for row in range(row_count):
+                #         for column in range(column_count):
+                #             item = str((list(working_status_data_main[row])[column]))
+                #             self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
                 #
                 # # update main view - detail result
                 # detail_result_main = []
@@ -2974,6 +3040,7 @@ class Ui_MainWindow(object):
                         headers = {"token": token}
                         response = requests.request("POST", api_path, json=register_data_form, headers=headers)
                         object_id_response = response.json()
+                        print("object_id_response: ", object_id_response)
                         if object_id_response["status"] == 200:
                             object_id_data = object_id_response["data"]["id"]
                             setting_data["object_id"] = object_id_data

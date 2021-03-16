@@ -38,13 +38,15 @@ def update_data_to_server(update_data_queue, forward_message, backward_message, 
 
             data = update_data_queue.get()
 
-            response = requests.request("POST", api_path, json=data, headers=headers)
-            check_update_data = response.json()
+            print("check data in queue: ", data)
 
-            if check_update_data["status"] == 200:
-                print("[INFO]-- Insert Data to Report Server is successful")
-            else:
-                print("[INFO]-- Insert Data to Report Server has problems, check again !")
+            # response = requests.request("POST", api_path, json=data, headers=headers)
+            # insert_data = response.json()
+            #
+            # if insert_data["status"] == 200:
+            #     print("[INFO]-- Insert Data to Report Server is successful")
+            # else:
+            #     print("[INFO]-- Insert Data to Report Server has problems, check again !")
 
         elif have_no_job:
             time.sleep(no_job_sleep_time)
