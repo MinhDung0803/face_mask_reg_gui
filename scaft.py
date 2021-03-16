@@ -726,18 +726,18 @@ import datetime
 import sqlite3
 
 
-# call latest time
-token = "d41d8cd98f00b204e9800998ecf8427e"
-setting_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
-check_latest_time_form = {
-    "object_id": 4,
-}
-# send request to API
-api_path = f"http://{setting_server_url}"
-headers = {"token": token}
-response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
-check_latest_time_data = response.json()
-print(check_latest_time_data)
+# # call latest time
+# token = "d41d8cd98f00b204e9800998ecf8427e"
+# setting_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
+# check_latest_time_form = {
+#     "object_id": 4,
+# }
+# # send request to API
+# api_path = f"http://{setting_server_url}"
+# headers = {"token": token}
+# response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
+# check_latest_time_data = response.json()
+# print(check_latest_time_data)
 #
 # # connect to sql database
 # conn = sqlite3.connect('./database/final_data_base.db')
@@ -909,7 +909,7 @@ print(check_latest_time_data)
 # div_lay_nguyen = len(lst) // num
 # print(div_lay_nguyen)
 # print(div_lay_du)
-
+#
 # data_test = []
 # for i in range(div_lay_nguyen+1):
 #     if i == 0:
@@ -923,3 +923,21 @@ print(check_latest_time_data)
 #     data_test.append(item_data)
 #
 # print("final data: ",data_test)
+import time
+import datetime
+
+num = 5
+check_time_1 = 0
+
+while True:
+    check_time_2 = datetime.datetime.now()
+    if check_time_1 == 0:
+        check_time_1 = check_time_2
+
+    time_delta = (check_time_2 - check_time_1)
+    total_seconds = time_delta.total_seconds()
+
+    if total_seconds >= num:
+        check_time_1 = check_time_2
+        print(total_seconds)
+        print("update data")

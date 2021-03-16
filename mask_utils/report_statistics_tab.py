@@ -14,7 +14,7 @@ def plot_save_export(name_of_figure,
                      save_figure_flag,
                      export_data_flag):
     # connect to sql database
-    conn = sqlite3.connect('./database/final_data_base.db')
+    conn = sqlite3.connect('/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/database/final_data_base.db')
     c = conn.cursor()
     return_data = []
 
