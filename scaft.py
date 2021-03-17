@@ -853,7 +853,7 @@ import sqlite3
 # update data
 # tang1 - 4
 # insert_data = {
-#     "camera_id": 4,
+#     "camera_id": 1,
 #     "data": [
 #         "5, 3, 2, 1, 4, 1, 1, 2020",
 #         "6, 3, 3, 2, 4, 1, 1, 2020",
@@ -861,13 +861,13 @@ import sqlite3
 #     ]
 # }
 # data_form = {
-#     "object_id": 4,
+#     "object_id": 1,
 #     "data": [insert_data]
 # }
 
 # # tang2 - 5
 # insert_data = {
-#     "camera_id": 5,
+#     "camera_id": 2,
 #     "data": [
 #         "5, 3, 2, 1, 3, 1, 1, 2020",
 #         "6, 3, 3, 2, 3, 1, 1, 2020",
@@ -875,31 +875,31 @@ import sqlite3
 #     ]
 # }
 # data_form = {
-#     "object_id": 4,
+#     "object_id": 1,
 #     "data": [insert_data]
 # }
 #
 # # tang3 - 5
-# insert_data = {
-#     "camera_id": 6,
-#     "data": [
-#         "5, 3, 2, 1, 2, 1, 1, 2020",
-#         "6, 3, 3, 2, 2, 1, 1, 2020",
-#         "2, 1, 1, 3, 2, 1, 1, 2020"
-#     ]
-# }
-# data_form = {
-#     "object_id": 4,
-#     "data": [insert_data]
-# }
+insert_data = {
+    "camera_id": 3,
+    "data": [
+        "5, 3, 2, 1, 2, 1, 1, 2020",
+        "6, 3, 3, 2, 2, 1, 1, 2020",
+        "2, 1, 1, 3, 2, 1, 1, 2020"
+    ]
+}
+data_form = {
+    "object_id": 1,
+    "data": [insert_data]
+}
 #
-# token = "d41d8cd98f00b204e9800998ecf8427e"
-# setting_server_url = "192.168.111.182:9000/api/objects/sync"
-# api_path = f"http://{setting_server_url}"
-# headers = {"token": token}
-# response = requests.request("POST", api_path, json=data_form, headers=headers)
-# insert_data = response.json()
-# print(insert_data)
+token = "d41d8cd98f00b204e9800998ecf8427e"
+setting_server_url = "192.168.111.133:9050/api/objects/sync"
+api_path = f"http://{setting_server_url}"
+headers = {"token": token}
+response = requests.request("POST", api_path, json=data_form, headers=headers)
+insert_data = response.json()
+print(insert_data)
 
 # lst = [i for i in range(1, 2039, 1)]
 # print(lst)
@@ -924,20 +924,20 @@ import sqlite3
 #
 # print("final data: ",data_test)
 import time
-import datetime
-
-num = 5
-check_time_1 = 0
-
-while True:
-    check_time_2 = datetime.datetime.now()
-    if check_time_1 == 0:
-        check_time_1 = check_time_2
-
-    time_delta = (check_time_2 - check_time_1)
-    total_seconds = time_delta.total_seconds()
-
-    if total_seconds >= num:
-        check_time_1 = check_time_2
-        print(total_seconds)
-        print("update data")
+# import datetime
+#
+# num = 5
+# check_time_1 = 0
+#
+# while True:
+#     check_time_2 = datetime.datetime.now()
+#     if check_time_1 == 0:
+#         check_time_1 = check_time_2
+#
+#     time_delta = (check_time_2 - check_time_1)
+#     total_seconds = time_delta.total_seconds()
+#
+#     if total_seconds >= num:
+#         check_time_1 = check_time_2
+#         print(total_seconds)
+#         print("update data")

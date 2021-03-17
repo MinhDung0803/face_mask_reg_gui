@@ -12,7 +12,7 @@ def update_data_to_server(update_data_queue, forward_message, backward_message, 
 
     # update data config
     token = "d41d8cd98f00b204e9800998ecf8427e"
-    setting_server_url = "192.168.111.182:9000/api/objects/sync"
+    setting_server_url = "192.168.111.133:9050/api/objects/sync"
     headers = {"token": token}
     api_path = f"http://{setting_server_url}"
 

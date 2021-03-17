@@ -10,8 +10,7 @@ number_of_limited_records = 500
 
 def inset_data_into_database(data_in, time_minute, time_hour, time_day, time_month, time_year):
     # # connect to sql database
-    conn_display = sqlite3.connect(
-        '/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/database/final_data_base.db')
+    conn_display = sqlite3.connect('./database/final_data_base.db')
     c_display = conn_display.cursor()
 
     data_form_add = pd.DataFrame.from_dict([data_in])
@@ -33,15 +32,14 @@ def update_data_to_report_server(json_data, token, update_data_queue):
     global number_of_limited_records
 
     # # connect to sql database
-    conn = sqlite3.connect(
-        '/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/database/final_data_base.db')
+    conn = sqlite3.connect('./database/final_data_base.db')
     c = conn.cursor()
     # update data to Report Server before run main loop
     check_latest_time_form = {
         "object_id": int(json_data["object_id"]),
     }
     # send request to API
-    check_time_server_url = "192.168.111.182:9000/api/objects/get_latest_result_sync"
+    check_time_server_url = "192.168.111.133:9050/api/objects/get_latest_result_sync"
     api_path = f"http://{check_time_server_url}"
     headers = {"token": token}
     response = requests.request("POST", api_path, json=check_latest_time_form, headers=headers)
@@ -61,15 +59,21 @@ def update_data_to_report_server(json_data, token, update_data_queue):
         to_time = now.strftime("%Y%m%d%H%M")
         from_time = "".join(data_lst)
 
+        print("from_time: ", from_time)
+        print("to_time: ", to_time)
+
+        # query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
+        #              f"camera_id = '{camera_id}' AND " \
+        #              f"(substr(year,1,4)||substr(substr('00'||month,-2),1,2)||substr(substr('00'||day,-2),1,2)||" \
+        #              f"substr(substr('00'||hour,-2),1,2)||substr(substr('00'||minute,-2),1,2)) " \
+        #              f"BETWEEN '{from_time}' AND '{to_time}'"
+
         query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
-                     f"camera_id = '{camera_id}' AND " \
-                     f"(substr(year,1,4)||substr(substr('00'||month,-2),1,2)||substr(substr('00'||day,-2),1,2)||" \
-                     f"substr(substr('00'||hour,-2),1,2)||substr(substr('00'||minute,-2),1,2)) " \
-                     f"BETWEEN '{from_time}' AND '{to_time}'"
+                     f"camera_id = '{camera_id}'"
 
         # query data
         c.execute(query_test)
-        updated_data = c.fetchall() # get all result data from query
+        updated_data = c.fetchall()  # get all result data from query
 
         sending_data = []
 

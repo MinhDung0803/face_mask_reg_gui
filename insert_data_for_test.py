@@ -126,7 +126,7 @@ def add_data_db():
     print("add data")
 
     # # read data from csv file
-    fake_data = pd.read_csv('./data/fake_data.csv')
+    fake_data = pd.read_csv('/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/fake_data/fake_data.csv')
     fake_data.to_sql('DATA', conn, if_exists='replace', index=False)
     conn.commit()
 

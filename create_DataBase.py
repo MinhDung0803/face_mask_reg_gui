@@ -68,5 +68,5 @@ if __name__ == "__main__":
     # create_db(db_test_name)
 
     # final
-    data_base_name = "final_data_base.db"
+    data_base_name = "./database/final_data_base.db"
     final_create_db(data_base_name)

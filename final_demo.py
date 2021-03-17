@@ -34,22 +34,23 @@ trigger_pause = 0
 time_circel_update_data = 300 # seconds
 check_time_1 = 0
 
-draw_region_points = []
-draw_counting_points = []
-
-draw_region_points_no_scale = []
-draw_counting_no_scale = []
-
+# for drawing region and counting lines
+draw_region_points = [] # records region points
+draw_counting_points = [] # records counting points
+draw_region_points_no_scale = [] # records region points with no scale
+draw_counting_no_scale = [] # records counting points with no scale
 draw_region_flag_new = False
 draw_count_flag_new = False
-
 draw_region_flag_old = False
 draw_count_flag_old = False
 
+# object_id for checking and register
 setting_object_id = None
 
+# lock app with password
 lock_trigger = False
 
+# hide passwords
 hide_1_trigger = False
 hide_2_trigger = False
 hide_3_trigger = False
@@ -59,6 +60,7 @@ hide_trigger = False
 pass_width = 400
 pass_height = 150
 
+# extra pixels and scale for drawing
 extra_pixels = 10  # for default points
 scale = 3  # for drawing, display drawing and for tracking
 
@@ -69,7 +71,7 @@ password_file = "./configs/password.json"
 token = "d41d8cd98f00b204e9800998ecf8427e"
 # ----- KEY
 
-# get password
+# get password from config file
 with open(password_file) as json_file:
     pass_data = json.load(json_file)
 json_file.close()
@@ -98,6 +100,10 @@ def close_window():
 def pause_unpause():
     global trigger_pause
     trigger_pause = 1
+
+
+def exit_app():
+    exit()
 
 
 def shape_selection_for_region(event, x, y, flags, param):
@@ -381,14 +387,13 @@ class Thread(QtCore.QThread):
                 if trigger_stop == 1:
                     forward_message.put("stop")
                     trigger_stop = 0
-                    # time.sleep(0.5)
                     self.stop_thread()
-                    time.sleep(0.5)
+                    time.sleep(0.1)
 
                 if trigger_pause == 1:
                     forward_message.put("pause/unpause")
                     trigger_pause = 0
-                    # time.sleep(1)
+                    time.sleep(0.1)
 
                 # get information form the queue
                 for cam_index in range(num_cam):
@@ -460,13 +465,13 @@ class Thread(QtCore.QThread):
                                 current_data["num_in"] += int(current_data["num_in"])
                                 current_data["num_mask"] = current_data["num_in"] - current_data["num_no_mask"]
 
-                            time_now = datetime.datetime.now() # check time to insert data into local database
+                            time_now = datetime.datetime.now()  # check time to insert data into local database
 
                             if time_now.minute == 1:
                                 if check_setting_time != 0:
                                     if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
                                             and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
-                                            and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
+                                            and (int(time_now.hour) <= int(setting_time_main[1][0:2])) \
                                             and (int(time_now.minute) < int(setting_time_main[1][3:5])):
                                         database_data[cam_index] = supervision_tab.inset_data_into_database(
                                             current_data,
@@ -486,7 +491,7 @@ class Thread(QtCore.QThread):
                                 if check_setting_time != 0:
                                     if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
                                             and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
-                                            and (int(time_now.hour) < int(setting_time_main[1][0:2])) \
+                                            and (int(time_now.hour) <= int(setting_time_main[1][0:2])) \
                                             and (int(time_now.minute) < int(setting_time_main[1][3:5])):
                                         database_data[cam_index] = supervision_tab.inset_data_into_database(
                                             current_data,
@@ -531,46 +536,47 @@ class Thread(QtCore.QThread):
 
                 if total_seconds >= time_circel_update_data:
                     # update data to Report Server after time circle
-                    supervision_tab.update_data_to_report_server()
+                    supervision_tab.update_data_to_report_server(json_data, token, update_data_queue)
                     # update check time
                     check_time_1 = check_time_2
 
                 # # ----- core dumped PROBLEMS
                 # update main view - working status
-                # working_status_data_main = []
-                # for i in range(len(view_data)):
-                #     working_status_item = [view_data[i]["camera_name"], view_data[i]["status"]]
-                #     working_status_data_main.append(working_status_item)
-                #
-                # if working_status_data_main != working_status_data_main_old:
-                #     self.g_tt_hoat_dong_table.setRowCount(0)
-                #     column_count = len(working_status_data_main[0])
-                #     row_count = len(working_status_data_main)
-                #     self.g_tt_hoat_dong_table.setRowCount(row_count)
-                #     for row in range(row_count):
-                #         for column in range(column_count):
-                #             item = str((list(working_status_data_main[row])[column]))
-                #             self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
-                #
+                working_status_data_main = []
+                for i in range(len(view_data)):
+                    working_status_item = [view_data[i]["camera_name"], view_data[i]["status"]]
+                    working_status_data_main.append(working_status_item)
+
+                if working_status_data_main != working_status_data_main_old:
+                    working_status_data_main_old = working_status_data_main
+                    self.g_tt_hoat_dong_table.setRowCount(0)
+                    column_count = len(working_status_data_main[0])
+                    row_count = len(working_status_data_main)
+                    self.g_tt_hoat_dong_table.setRowCount(row_count)
+                    for row in range(row_count):
+                        for column in range(column_count):
+                            item = str((list(working_status_data_main[row])[column]))
+                            self.g_tt_hoat_dong_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+
                 # # update main view - detail result
-                # detail_result_main = []
-                # for i in range(len(view_data)):
-                #     detail_result_main_item = [view_data[i]["camera_name"],
-                #                                view_data[i]["person"],
-                #                                view_data[i]["mask"],
-                #                                view_data[i]["no_mask"]]
-                #     detail_result_main.append(detail_result_main_item)
-                #
-                #
-                # if detail_result_main != detail_result_main_old:
-                #     self.g_ket_qua_chi_tiet_table.setRowCount(0)
-                #     column_count = len(detail_result_main[0])
-                #     row_count = len(detail_result_main)
-                #     self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
-                #     for row in range(row_count):
-                #         for column in range(column_count):
-                #             item = str((list(detail_result_main[row])[column]))
-                #             self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
+                detail_result_main = []
+                for i in range(len(view_data)):
+                    detail_result_main_item = [view_data[i]["camera_name"],
+                                               view_data[i]["person"],
+                                               view_data[i]["mask"],
+                                               view_data[i]["no_mask"]]
+                    detail_result_main.append(detail_result_main_item)
+
+                if detail_result_main != detail_result_main_old:
+                    detail_result_main_old = detail_result_main
+                    self.g_ket_qua_chi_tiet_table.setRowCount(0)
+                    column_count = len(detail_result_main[0])
+                    row_count = len(detail_result_main)
+                    self.g_ket_qua_chi_tiet_table.setRowCount(row_count)
+                    for row in range(row_count):
+                        for column in range(column_count):
+                            item = str((list(detail_result_main[row])[column]))
+                            self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
                 # # ----- core dumped PROBLEMS
 
                 # update main view - general result
@@ -603,16 +609,8 @@ class Thread(QtCore.QThread):
                 time.sleep(0.5)
 
     def stop_thread(self):
-        global draw_region_flag, \
-            draw_count_flag, \
-            draw_counting_points, \
-            draw_region_points, \
-            draw_counting_no_scale, \
-            draw_region_points_no_scale
-
+        global draw_counting_points, draw_region_points, draw_counting_no_scale, draw_region_points_no_scale
         self._go = False
-        draw_region_flag = False
-        draw_count_flag = False
         draw_counting_points = []
         draw_region_points = []
         draw_region_points_no_scale = []
@@ -2108,6 +2106,8 @@ class Ui_MainWindow(object):
 
         # check lock action
         self.actionLock.triggered.connect(self.password_application)
+        # check exit app action
+        self.exit.triggered.connect(exit_app)
 
         self.menuHome.addAction(self.actionLock)
         self.menuHome.addAction(self.exit)
@@ -2305,6 +2305,7 @@ class Ui_MainWindow(object):
                         item = str((list(camera_infor[row])[column]))
                         self.q_thong_tin_camera_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
+    # has API URL
     def camera_management_assign_camera_id(self):
         global config_file
         assign_camera_id_data = read_config_file()
@@ -2316,7 +2317,8 @@ class Ui_MainWindow(object):
             else:
                 assign_new_camera_name = self.q_moi_ten_camera.text()
                 # call API and get result of camera id
-                setting_server_url = "192.168.111.182:9000/api/cameras"
+                # setting_server_url = "192.168.111.182:9000/api/cameras" # for local Report Server
+                setting_server_url = "192.168.111.133:9050/api/cameras"
                 register_data_form = {
                     "name": assign_new_camera_name,
                     "object_appearance_id": assign_camera_id_data["object_id"],
@@ -2607,6 +2609,7 @@ class Ui_MainWindow(object):
                 self.q_chinh_time_den.setTime(QtCore.QTime(int(search_camera_infor["setting_time"][1][0:2]),
                                                            int(search_camera_infor["setting_time"][1][3:5])))
 
+    # has API URL
     def camera_management_rename(self):
         global config_file
         rename_data = read_config_file()
@@ -2630,7 +2633,8 @@ class Ui_MainWindow(object):
                             rename_position_of_camera = i
 
                     # sending request to rename the camera
-                    rename_server_url = f"192.168.111.182:9000/api/cameras/{rename_get_camera_id}"
+                    # rename_server_url = f"192.168.111.182:9000/api/cameras/{rename_get_camera_id}"
+                    rename_server_url = f"192.168.111.133:9050/api/cameras/{rename_get_camera_id}"
                     rename_data_form = {
                         "name": name_for_rename,
                     }
@@ -2669,6 +2673,7 @@ class Ui_MainWindow(object):
         else:
             app_warning_function.non_object_id()
 
+    # has API URL
     def camera_management_delete_camera(self):
         global config_file
         # load config file for search camera name and edit
@@ -2691,7 +2696,8 @@ class Ui_MainWindow(object):
                         position_of_camera_delete = i
 
                 # sending request to rename the camera
-                delete_server_url = f"192.168.111.182:9000/api/cameras/{delete_get_camera_id}"
+                # delete_server_url = f"192.168.111.182:9000/api/cameras/{delete_get_camera_id}" #  for local Report Server
+                delete_server_url = f"192.168.111.133:9050/api/cameras/{delete_get_camera_id}"
                 api_path = f"http://{delete_server_url}"
                 headers = {"token": token}
                 response = requests.request("DELETE", api_path, headers=headers)
@@ -2838,7 +2844,7 @@ class Ui_MainWindow(object):
 
     # FOR MAIN VIEW TAB
     def video(self):
-        global config_file, count, width, height
+        global config_file, width, height
         if not os.path.exists(config_file):
             app_warning_function.camera_config_flie()
         else:
@@ -2905,6 +2911,7 @@ class Ui_MainWindow(object):
                         self.g_ket_qua_chi_tiet_table.setItem(row, column, QtWidgets.QTableWidgetItem(item))
 
     # FOR INFORMATION AND SETTING TAB
+    # input API URL
     def setting_register_object_id(self):
         global token, config_file
         # load config file to check object_id information
