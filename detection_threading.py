@@ -3,9 +3,9 @@ import threading
 import time
 import cv2
 
-sys.path.append(("/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/head_detection/"))
+sys.path.append(("/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/yolov5"))
 import detection_module
-detection_module.load_model(use_cuda=True)
+detection_module.load_model("/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/yolov5/best.pt", 416, device_str="cpu")
 
 # sys.path.append("/home/gg-greenlab/Downloads/FaceMaskDetection")
 # import mask_detection
@@ -104,11 +104,12 @@ def detecting(list_frame_image_buffer, detect_step_list, video_infor_list, detec
 							# class_ids = [0]*len(bboxes)
 
 							# face _ body
-							wanted_labels = ("head", "head_2", "mask")
-							thresholds = (0.1, 0.1, 0.1)
+							# wanted_labels = ("head", "head_2", "mask")
+							# thresholds = (0.1, 0.1, 0.1)
 
-
-							bboxes, class_ids, scores = detection_module.face_mask_detection(frame_ori, wanted_labels, thresholds)
+							# call detect
+							# bboxes, class_ids, scores = detection_module.face_mask_detection(frame_ori, wanted_labels, thresholds)
+							bboxes, class_ids, scores, _ = detection_module.detect(frame_ori, 0.5, classes=None)
 
 
 							# do not use
