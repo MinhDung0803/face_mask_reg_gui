@@ -55,7 +55,7 @@ def update_data_to_report_server(json_data, update_data_queue):
     check_latest_time_data = response.json()
 
     if check_latest_time_data["status"] == 200:
-        # print(check_latest_time_data)
+        print('[INFO]-- Latest time from Report Server', check_latest_time_data)
 
         for item in check_latest_time_data["data"]:
             if item is not None:
@@ -87,7 +87,7 @@ def update_data_to_report_server(json_data, update_data_queue):
                 # query data
                 c.execute(query_test)
                 updated_data = c.fetchall()  # get all result data from query
-
+                print('[INFO]-- Query data to update', updated_data)
                 sending_data = []
 
                 if (len(updated_data) > 0) and (len(updated_data) < 500):
@@ -110,7 +110,7 @@ def update_data_to_report_server(json_data, update_data_queue):
                         # put into update data queue
                         update_data_queue.put(data_form)
                     else:
-                        print('[INFO]-- Problem on preprocessing data before updating to Report Server')
+                        print('[INFO]-- Data at Report Server was updated')
                 elif len(updated_data) > 500:
                     total_number_data = len(updated_data)
                     div_lay_du = total_number_data % number_of_limited_records
@@ -144,6 +144,8 @@ def update_data_to_report_server(json_data, update_data_queue):
                             # put data into queue for updating
                             update_data_queue.put(data_form)
                         else:
-                            print('[INFO]-- Problem on preprocessing data before updating to Report Server')
+                            print('[INFO]-- Data at Report Server was updated')
                 else:
                     print('[INFO]-- Data at Report Server was updated')
+            else:
+                print('[INFO]-- No response about latest time from Report Server')

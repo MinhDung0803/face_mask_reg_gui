@@ -252,7 +252,8 @@ def save(settings):
 class Thread(QtCore.QThread):
     changePixmap = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, parent, g_tong_vao, g_tong_kt, g_tong_khong_kt, g_ket_qua_chi_tiet_table, g_tt_hoat_dong_table):
+    def __init__(self, parent, g_tong_vao, g_tong_kt, g_tong_khong_kt, g_ket_qua_chi_tiet_table, g_tt_hoat_dong_table,
+                 g_date_time):
 
         QtCore.QThread.__init__(self, parent)
         self._go = None
@@ -262,6 +263,7 @@ class Thread(QtCore.QThread):
         self.g_tong_khong_kt = g_tong_khong_kt
         self.g_ket_qua_chi_tiet_table = g_ket_qua_chi_tiet_table
         self.g_tt_hoat_dong_table = g_tt_hoat_dong_table
+        self.g_date_time = g_date_time
 
     def run(self):
         global height, width, config_file, trigger_stop, trigger_pause, token, time_circel_update_data, check_time_1
@@ -322,7 +324,7 @@ class Thread(QtCore.QThread):
             "person": 0,
             "no_mask": 0,
             "mask": 0,
-            "status": "disabled",
+            "status": "ready",
             "setting_time": [],
             "alarm_option": "",
             "sound": "",
@@ -592,16 +594,19 @@ class Thread(QtCore.QThread):
                 all_person = 0
                 all_no_mask = 0
                 all_mask = 0
-                #
+
                 for i in range(len(view_data)):
                     all_person = all_person + int(view_data[i]["person"])
                     all_no_mask = all_no_mask + int(view_data[i]["no_mask"])
                     all_mask = all_person - all_no_mask
-                #
+
                 # display them
                 self.g_tong_vao.display(all_person)
                 self.g_tong_kt.display(all_mask)
                 self.g_tong_khong_kt.display(all_no_mask)
+
+                # update date time on main view
+                self.g_date_time.setText(str(datetime.datetime.now()))
 
                 # check setting time (TO) for STOP
                 now_automation_stop_time = datetime.datetime.now()
@@ -2035,7 +2040,7 @@ class Ui_MainWindow(object):
         # call display video
         global th
         th = Thread(MainWindow, self.g_tong_vao, self.g_tong_kt, self.g_tong_khong_kt, self.g_ket_qua_chi_tiet_table,
-                    self.g_tt_hoat_dong_table)
+                    self.g_tt_hoat_dong_table, self.g_date_time)
         # update camera working status
         self.camera_working_status()
         # update detail counting result
