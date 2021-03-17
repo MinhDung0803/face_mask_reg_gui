@@ -113,9 +113,9 @@ def plot_save_export(name_of_figure,
                 for elem in return_data:
                     for i in range(len(y_in)):
                         if elem[6] - 1 == i:
-                            y_in[i] = y_in[i] + elem[2]
-                            y_mask[i] = y_mask[i] + elem[3]
-                            y_no_mask[i] = y_no_mask[i] + elem[4]
+                            y_in[i] = y_in[i] + elem[1]
+                            y_mask[i] = y_mask[i] + elem[2]
+                            y_no_mask[i] = y_no_mask[i] + elem[3]
                 plt.figure(figsize=(10, 5))
                 plt.plot(x, y_in, label="Tổng số người vào")
                 plt.plot(x, y_mask, label="Tổng số người có khẩu trang")
@@ -165,10 +165,10 @@ def plot_save_export(name_of_figure,
                 y_no_mask = [0 for i in range(1, 13, 1)]
                 for elem in return_data:
                     for i in range(len(y_in)):
-                        if elem[6] - 1 == i:
-                            y_in[i] = y_in[i] + elem[2]
-                            y_mask[i] = y_mask[i] + elem[3]
-                            y_no_mask[i] = y_no_mask[i] + elem[4]
+                        if elem[7] - 1 == i:
+                            y_in[i] = y_in[i] + elem[1]
+                            y_mask[i] = y_mask[i] + elem[2]
+                            y_no_mask[i] = y_no_mask[i] + elem[3]
                 plt.figure(figsize=(10, 5))
                 plt.plot(x, y_in, label="Tổng số người vào")
                 plt.plot(x, y_mask, label="Tổng số người có khẩu trang")

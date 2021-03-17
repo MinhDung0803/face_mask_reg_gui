@@ -815,25 +815,32 @@ import sqlite3
 #             insert_data = response.json()
 #             print(insert_data)
 
-# import sqlite3
-# # connect to sql database
-# conn = sqlite3.connect('./database/final_data_base.db')
-# c = conn.cursor()
-#
-# camera_id = 4
-#
+import sqlite3
+# connect to sql database
+conn = sqlite3.connect('./database/final_data_base.db')
+c = conn.cursor()
+
+camera_id = 4
+year_input = 2020
+
 # query_test = f"SELECT num_in, num_mask, num_no_mask, minute, hour, day, month, year FROM DATA WHERE " \
 #              f"camera_id = '{camera_id}' AND " \
 #              f"(substr(year,1,4)||substr(substr('00'||month,-2),1,2)||substr(substr('00'||day,-2),1,2)||" \
 #              f"substr(substr('00'||hour,-2),1,2)||substr(substr('00'||minute,-2),1,2)) " \
 #              f"BETWEEN '202001010502' AND '202103160835'"
-#
-# # query_test = "select substr('00'||3,-2);"
-#
-# c.execute(query_test)
-# updated_data = c.fetchall()
-# print(len(updated_data))
-# print(updated_data)
+
+query_test = f"SELECT camera_name,num_in,num_mask,num_no_mask,minute,hour,day,month,year " \
+        f"FROM DATA WHERE camera_id = '{camera_id}' and year = {year_input}"
+
+c.execute(query_test)
+updated_data = c.fetchall()
+print(len(updated_data))
+print(updated_data)
+
+print("test:", updated_data[0][0])
+
+y_in = [0 for i in range(1, 13, 1)]
+print(y_in)
 
 
 # import datetime
