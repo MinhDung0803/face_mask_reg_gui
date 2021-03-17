@@ -181,14 +181,6 @@ def check_licence_for_object_id():
     alert.exec_()
 
 
-# Nhập server đồng bộ dữ liệu cho quá trình đăng kí Mã định danh
-def check_server_url_for_object_id():
-    alert = QtWidgets.QMessageBox()
-    alert.setWindowTitle("Cảnh báo")
-    alert.setText('Vui lòng nhập Server đồng bộ Dữ liệu(DL) cho quá trình đăng kí Mã định danh!')
-    alert.exec_()
-
-
 # Đăng kí Mã định danh thành công
 def register_object_id_successful():
     alert = QtWidgets.QMessageBox()
@@ -203,6 +195,15 @@ def register_object_id_falied():
     alert.setWindowTitle("Cảnh báo")
     alert.setText('Đăng kí Mã định danh thất bại do sự cố ngắt kết nối mạng hoặc một vài lí do khác, vui lòng kiểm tra '
                   'đường truyền và thực hiện đăng kí lại!')
+    alert.exec_()
+
+
+# Đăng kí Mã định danh thất bại
+def licence_already_used():
+    alert = QtWidgets.QMessageBox()
+    alert.setWindowTitle("Cảnh báo")
+    alert.setText('Đăng kí Mã định danh thất bại do Mã cấp phép đã được sử dụng hoặc không có sẵn, vui lòng kiểm tra '
+                  'lại Mã cấp phép và thực hiện đăng kí lại!')
     alert.exec_()
 
 

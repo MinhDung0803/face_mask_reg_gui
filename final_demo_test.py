@@ -68,7 +68,7 @@ scale = 3  # for drawing, display drawing and for tracking
 # ----- KEY
 config_file = "./configs/cameras_config.yml"
 password_file = "./configs/password.json"
-token = "d41d8cd98f00b204e9800998ecf8427e"
+configuration_file = "./configs/configuration.json"
 # ----- KEY
 
 # get password from config file
@@ -76,6 +76,15 @@ with open(password_file) as json_file:
     pass_data = json.load(json_file)
 json_file.close()
 password = pass_data["password"]
+
+
+def configuration_file_infor():
+    global configuration_file
+    # load host and port in configuration file
+    with open(configuration_file) as json_configuration_file:
+        json_configuration_data = json.load(json_configuration_file)
+    json_file.close()
+    return json_configuration_data
 
 
 def read_config_file():
@@ -378,7 +387,7 @@ class Thread(QtCore.QThread):
                 automation_stop_time[1] = int(time_infor[1][3:5])
 
         # update data to Report Server before run main loop
-        supervision_tab.update_data_to_report_server(json_data, token, update_data_queue)
+        supervision_tab.update_data_to_report_server(json_data, update_data_queue)
 
         # main loop
         while self._go:
@@ -467,7 +476,7 @@ class Thread(QtCore.QThread):
 
                             time_now = datetime.datetime.now()  # check time to insert data into local database
 
-                            if time_now.minute == 1:
+                            if time_now.minute == 1 and current_data["minute"] != 1:
                                 if check_setting_time != 0:
                                     if (int(time_now.hour) >= int(setting_time_main[0][0:2])) \
                                             and (int(time_now.minute) >= int(setting_time_main[0][3:5])) \
@@ -750,7 +759,7 @@ class Ui_MainWindow(object):
         self.tab_7 = QtWidgets.QWidget()
         self.tab_7.setObjectName("tab_7")
         self.t_server_apply_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_apply_button.setGeometry(QtCore.QRect(250, 190, 51, 31))
+        self.t_server_apply_button.setGeometry(QtCore.QRect(250, 150, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -767,7 +776,7 @@ class Ui_MainWindow(object):
         self.label_84.setGeometry(QtCore.QRect(10, 50, 81, 17))
         self.label_84.setObjectName("label_84")
         self.t_server_cancel_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_cancel_button.setGeometry(QtCore.QRect(330, 190, 51, 31))
+        self.t_server_cancel_button.setGeometry(QtCore.QRect(330, 150, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -779,17 +788,17 @@ class Ui_MainWindow(object):
         self.label_85 = QtWidgets.QLabel(self.tab_7)
         self.label_85.setGeometry(QtCore.QRect(10, 10, 121, 17))
         self.label_85.setObjectName("label_85")
-        self.label_116 = QtWidgets.QLabel(self.tab_7)
-        self.label_116.setGeometry(QtCore.QRect(10, 90, 151, 17))
-        self.label_116.setObjectName("label_116")
-        self.t_server_server_dong_bo = QtWidgets.QLineEdit(self.tab_7)
-        self.t_server_server_dong_bo.setGeometry(QtCore.QRect(170, 90, 371, 21))
-        self.t_server_server_dong_bo.setObjectName("t_server_server_dong_bo")
+        # self.label_116 = QtWidgets.QLabel(self.tab_7)
+        # self.label_116.setGeometry(QtCore.QRect(10, 90, 151, 17))
+        # self.label_116.setObjectName("label_116")
+        # self.t_server_server_dong_bo = QtWidgets.QLineEdit(self.tab_7)
+        # self.t_server_server_dong_bo.setGeometry(QtCore.QRect(170, 90, 371, 21))
+        # self.t_server_server_dong_bo.setObjectName("t_server_server_dong_bo")
         self.t_server_ten_thiet_bi = QtWidgets.QLineEdit(self.tab_7)
         self.t_server_ten_thiet_bi.setGeometry(QtCore.QRect(170, 10, 371, 21))
         self.t_server_ten_thiet_bi.setObjectName("t_server_ten_thiet_bi")
         self.t_server_sending_button = QtWidgets.QPushButton(self.tab_7)
-        self.t_server_sending_button.setGeometry(QtCore.QRect(170, 190, 51, 31))
+        self.t_server_sending_button.setGeometry(QtCore.QRect(170, 150, 51, 31))
         font = QtGui.QFont()
         font.setFamily("Ubuntu")
         font.setPointSize(10)
@@ -799,10 +808,10 @@ class Ui_MainWindow(object):
         self.t_server_sending_button.setText("")
         self.t_server_sending_button.setObjectName("t_server_sending_button")
         self.label_120 = QtWidgets.QLabel(self.tab_7)
-        self.label_120.setGeometry(QtCore.QRect(10, 130, 151, 17))
+        self.label_120.setGeometry(QtCore.QRect(10, 90, 151, 17))
         self.label_120.setObjectName("label_120")
         self.t_server_key = QtWidgets.QLabel(self.tab_7)
-        self.t_server_key.setGeometry(QtCore.QRect(170, 130, 371, 21))
+        self.t_server_key.setGeometry(QtCore.QRect(170, 90, 371, 21))
         self.t_server_key.setFrameShape(QtWidgets.QFrame.Box)
         self.t_server_key.setText("")
         self.t_server_key.setObjectName("t_server_key")
@@ -2307,8 +2316,15 @@ class Ui_MainWindow(object):
 
     # has API URL
     def camera_management_assign_camera_id(self):
-        global config_file
+        global config_file, configuration_file
         assign_camera_id_data = read_config_file()
+
+        # get host, port in configuration file
+        assign_camera_configuration = configuration_file_infor()
+        host = assign_camera_configuration["host"]
+        port = assign_camera_configuration["port"]
+        token = assign_camera_configuration["token"]
+
         if len(str(assign_camera_id_data["object_id"])) > 0:
 
             # check camera name
@@ -2318,7 +2334,7 @@ class Ui_MainWindow(object):
                 assign_new_camera_name = self.q_moi_ten_camera.text()
                 # call API and get result of camera id
                 # setting_server_url = "192.168.111.182:9000/api/cameras" # for local Report Server
-                setting_server_url = "192.168.111.133:9050/api/cameras"
+                setting_server_url = f"{host}:{port}/api/cameras"
                 register_data_form = {
                     "name": assign_new_camera_name,
                     "object_appearance_id": assign_camera_id_data["object_id"],
@@ -2329,6 +2345,8 @@ class Ui_MainWindow(object):
                 response = requests.request("POST", api_path, json=register_data_form, headers=headers)
                 camera_id_data = response.json()
                 if camera_id_data["status"] == 200:
+                    # get response token
+
                     self.q_moi_camera_id.setText(str(camera_id_data["data"]["id"]))
                     new_camera_data = {
                         "id": str(camera_id_data["data"]["id"]),
@@ -2613,6 +2631,12 @@ class Ui_MainWindow(object):
     def camera_management_rename(self):
         global config_file
         rename_data = read_config_file()
+        # get host, port in configuration file
+        assign_camera_configuration = configuration_file_infor()
+        host_rename = assign_camera_configuration["host"]
+        port_rename = assign_camera_configuration["port"]
+        token_rename = assign_camera_configuration["token"]
+
         old_name = self.q_chinh_camera_name.text()
         if len(str(rename_data["object_id"])) > 0:
             if len(self.q_chinh_camera_new_name.text()) == 0:
@@ -2634,12 +2658,12 @@ class Ui_MainWindow(object):
 
                     # sending request to rename the camera
                     # rename_server_url = f"192.168.111.182:9000/api/cameras/{rename_get_camera_id}"
-                    rename_server_url = f"192.168.111.133:9050/api/cameras/{rename_get_camera_id}"
+                    rename_server_url = f"{host_rename}:{port_rename}/api/cameras/{rename_get_camera_id}"
                     rename_data_form = {
                         "name": name_for_rename,
                     }
                     api_path = f"http://{rename_server_url}"
-                    headers = {"token": token}
+                    headers = {"token": token_rename}
                     response = requests.request("PATCH", api_path, json=rename_data_form, headers=headers)
                     rename_data_response = response.json()
                     if rename_data_response["status"] == 200:
@@ -2678,6 +2702,12 @@ class Ui_MainWindow(object):
         global config_file
         # load config file for search camera name and edit
         data_delete = read_config_file()
+        # get host, port in configuration file
+        assign_camera_configuration = configuration_file_infor()
+        host_delete = assign_camera_configuration["host"]
+        port_delete = assign_camera_configuration["port"]
+        token_delete = assign_camera_configuration["token"]
+
         if len(str(data_delete["object_id"])) > 0:
             # check camera name
             if len(self.q_chinh_camera_name.text()) == 0:
@@ -2696,10 +2726,9 @@ class Ui_MainWindow(object):
                         position_of_camera_delete = i
 
                 # sending request to rename the camera
-                # delete_server_url = f"192.168.111.182:9000/api/cameras/{delete_get_camera_id}" #  for local Report Server
-                delete_server_url = f"192.168.111.133:9050/api/cameras/{delete_get_camera_id}"
+                delete_server_url = f"{host_delete}:{port_delete}/api/cameras/{delete_get_camera_id}"
                 api_path = f"http://{delete_server_url}"
-                headers = {"token": token}
+                headers = {"token": token_delete}
                 response = requests.request("DELETE", api_path, headers=headers)
                 delete_data_response = response.json()
                 print("delete_data_response", delete_data_response)
@@ -2913,9 +2942,14 @@ class Ui_MainWindow(object):
     # FOR INFORMATION AND SETTING TAB
     # input API URL
     def setting_register_object_id(self):
-        global token, config_file
+        global config_file, configuration_file
         # load config file to check object_id information
         setting_data = read_config_file()
+
+        # get host, port in configuration file
+        assign_camera_configuration = configuration_file_infor()
+        host_register_object = assign_camera_configuration["host"]
+        port_register_object = assign_camera_configuration["port"]
 
         if len(str(setting_data["object_id"])) > 0:
             app_warning_function.check_object_id()
@@ -2925,34 +2959,45 @@ class Ui_MainWindow(object):
                 setting_object_name = str(self.t_server_ten_thiet_bi.text())
                 if len(self.t_server_cap_phep.text()) > 0:
                     setting_licence = self.t_server_cap_phep.text()
-                    if len(self.t_server_server_dong_bo.text()) > 0:
-                        setting_server_url = self.t_server_server_dong_bo.text()
-                        register_data_form = {
-                            "object_name": setting_object_name,
-                            "licence": setting_licence,
-                        }
-                        # send request to API
-                        api_path = f"http://{setting_server_url}"
-                        headers = {"token": token}
-                        response = requests.request("POST", api_path, json=register_data_form, headers=headers)
-                        object_id_response = response.json()
-                        print("object_id_response: ", object_id_response)
-                        if object_id_response["status"] == 200:
-                            object_id_data = object_id_response["data"]["id"]
-                            setting_data["object_id"] = object_id_data
-                            # update object_id into config file
-                            yaml.warnings({'YAMLLoadWarning': False})
-                            with open(config_file, 'r') as fs_setting:
-                                config_setting = yaml.load(fs_setting)
-                            cam_config_setting = config_setting["input"]["cam_config"]
-                            # write json file
-                            with open(cam_config_setting, "w") as outfile_setting:
-                                json.dump(setting_data, outfile_setting)
-                            outfile_setting.close()
-                        else:
-                            app_warning_function.register_object_id_falied()
+                    setting_server_url = f"{host_register_object}:{port_register_object}/api/objects/store"
+                    register_data_form = {
+                        "object_name": setting_object_name,
+                        "licence": setting_licence,
+                    }
+                    # send request to API
+                    api_path = f"http://{setting_server_url}"
+                    response = requests.request("POST", api_path, json=register_data_form)
+                    object_id_response = response.json()
+                    print("object_id_response: ", object_id_response)
+                    if object_id_response["status"] == 200:
+                        response_token = object_id_response["data"]["token"]
+                        object_id_data = object_id_response["data"]["id"]
+                        setting_data["object_id"] = object_id_data
+                        # update object_id into config file
+                        yaml.warnings({'YAMLLoadWarning': False})
+                        with open(config_file, 'r') as fs_setting:
+                            config_setting = yaml.load(fs_setting)
+                        cam_config_setting = config_setting["input"]["cam_config"]
+                        # write json file
+                        with open(cam_config_setting, "w") as outfile_setting:
+                            json.dump(setting_data, outfile_setting)
+                        outfile_setting.close()
+
+                        # update(insert) token for configuration file
+                        with open(configuration_file) as json_configuration_file:
+                            json_data_configuration = json.load(json_configuration_file)
+                        json_configuration_file.close()
+                        # add new camera information
+                        json_data_configuration["token"] = response_token
+                        # write json file
+                        with open(json_configuration_file.name, "w") as outfile_configuration:
+                            json.dump(json_data_configuration, outfile_configuration)
+                        outfile_configuration.close()
+
+                    elif object_id_response["errors"][0]["detail"] == "Giấy phép đã được sử dụng hoặc không có sẳn":
+                        app_warning_function.licence_already_used()
                     else:
-                        app_warning_function.check_server_url_for_object_id()
+                        app_warning_function.register_object_id_falied()
                 else:
                     app_warning_function.check_licence_for_object_id()
             else:
@@ -3047,7 +3092,7 @@ class Ui_MainWindow(object):
         self.t_tt_cap_phep.setText(_translate("MainWindow", "abcxyz"))
         self.label_84.setText(_translate("MainWindow", "Mã cấp phép"))
         self.label_85.setText(_translate("MainWindow", "Tên thiết bị"))
-        self.label_116.setText(_translate("MainWindow", "Server đồng bộ DL"))
+        # self.label_116.setText(_translate("MainWindow", "Server đồng bộ DL"))
         self.label_120.setText(_translate("MainWindow", "Mã định danh"))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_7), _translate("MainWindow", "Thiết đặt"))
         self.label_126.setText(_translate("MainWindow", "Xác nhận mật khẩu mới"))
@@ -3213,8 +3258,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         save(self.settings)
         super().closeEvent(event)
-
-
 # ------------------------------------------------------  MAIN APPLICATION
 
 
@@ -3307,8 +3350,6 @@ class MainWindow2(QtWidgets.QMainWindow, Ui_Password2):
 
     def closeEvent(self, event):
         super().closeEvent(event)
-
-
 # ------------------------------------------------------  PASSWORD APPLICATION
 
 
