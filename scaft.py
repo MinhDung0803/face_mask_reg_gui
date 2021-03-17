@@ -861,7 +861,7 @@ import sqlite3
 #     ]
 # }
 # data_form = {
-#     "object_id": 4,
+#     "object_id": 2,
 #     "data": [insert_data]
 # }
 
@@ -875,11 +875,11 @@ import sqlite3
 #     ]
 # }
 # data_form = {
-#     "object_id": 4,
+#     "object_id": 2,
 #     "data": [insert_data]
 # }
-#
-# # tang3 - 5
+
+# # # tang3 - 5
 # insert_data = {
 #     "camera_id": 6,
 #     "data": [
@@ -889,12 +889,12 @@ import sqlite3
 #     ]
 # }
 # data_form = {
-#     "object_id": 4,
+#     "object_id": 2,
 #     "data": [insert_data]
 # }
-#
-# token = "d41d8cd98f00b204e9800998ecf8427e"
-# setting_server_url = "192.168.111.182:9000/api/objects/sync"
+# # #
+# token = "9de8ee9598522adacfd704a2f2f44b62"
+# setting_server_url = "192.168.111.133:9050/api/objects/sync"
 # api_path = f"http://{setting_server_url}"
 # headers = {"token": token}
 # response = requests.request("POST", api_path, json=data_form, headers=headers)
@@ -924,20 +924,31 @@ import sqlite3
 #
 # print("final data: ",data_test)
 import time
-import datetime
+# import datetime
+#
+# num = 5
+# check_time_1 = 0
+#
+# while True:
+#     check_time_2 = datetime.datetime.now()
+#     if check_time_1 == 0:
+#         check_time_1 = check_time_2
+#
+#     time_delta = (check_time_2 - check_time_1)
+#     total_seconds = time_delta.total_seconds()
+#
+#     if total_seconds >= num:
+#         check_time_1 = check_time_2
+#         print(total_seconds)
+#         print("update data")
 
-num = 5
-check_time_1 = 0
-
-while True:
-    check_time_2 = datetime.datetime.now()
-    if check_time_1 == 0:
-        check_time_1 = check_time_2
-
-    time_delta = (check_time_2 - check_time_1)
-    total_seconds = time_delta.total_seconds()
-
-    if total_seconds >= num:
-        check_time_1 = check_time_2
-        print(total_seconds)
-        print("update data")
+# import json
+#
+# configuration_file = "./configs/configuration.json"
+# with open(configuration_file) as json_file:
+#     json_data = json.load(json_file)
+# json_file.close()
+#
+# host = json_data["host"]
+# port = json_data["port"]
+# token = json_data["token"]
