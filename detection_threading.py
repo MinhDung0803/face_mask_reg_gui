@@ -2,13 +2,9 @@ import sys
 import threading
 import time
 import cv2
-
-sys.path.append(("/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/yolov5"))
 import detection_module
-detection_module.load_model("/home/gg-greenlab/Desktop/Project/dungpm/face_mask_reg_gui/yolov5/best.pt", 416, device_str="cpu")
+detection_module.load_model("./face_mask_model/best.pt", 416, device_str="cpu")
 
-# sys.path.append("/home/gg-greenlab/Downloads/FaceMaskDetection")
-# import mask_detection
 
 def is_closed_all(list_closed_queue):
 	for closed in list_closed_queue:
